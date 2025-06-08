@@ -1,5 +1,10 @@
 import os
+import time
+import multiprocessing
 from typing import BinaryIO
+from pathlib import Path
+from collections import Counter
+import regex as re
 
 def find_chunk_boundaries(
     file: BinaryIO, 
@@ -49,14 +54,165 @@ def find_chunk_boundaries(
     # Make sure all boundaries are unique, but might be fewer than desired_num_chunks
     return sorted(set(chunk_boundaries))
 
-## Usage
-with open(..., "rb") as f:
-    boundaries = find_chunk_boundaries(
-        f, num_processes, "<|endoftext|>".encode("utf-8"))
-        
-    # The following is a serial implementation, but you can parallelize this 
-    # by sending each start/end pair to a set of processes.
-    for start, end in zip(boundaries[:-1], boundaries[1:]):
+
+def pre_tokenize(
+    file_path: str | os.PathLike,
+    start: int,
+    end: int,
+    special_tokens: list[str],
+) -> dict[tuple, int]:
+    """
+    Given a chunk of text, return a dictionary of pre-tokens and their counts.
+    """
+    with open(file_path, "rb") as f:
         f.seek(start)
         chunk = f.read(end - start).decode("utf-8", errors="ignore")
-        # Run pre-tokenization on your chunk and store the counts for each pre-token
+        # remove special tokens
+        raw_texts = re.splititer("|".join(map(re.escape, special_tokens)), chunk)
+        PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+        freq_dict = Counter()
+        for raw_text in raw_texts:
+            for match in re.finditer(PAT, raw_text): # use finditer to save memory
+                word = match.group()
+                freq_dict[word] += 1
+        freq_dict = {tuple(k.encode("utf-8")): v for k, v in freq_dict.items()}
+        return freq_dict
+
+def count_pairs(chunk):
+    local_freq = Counter()
+    for k, v in chunk:
+        for pair in zip(k[:-1], k[1:]):
+            local_freq[pair] += v
+    return local_freq
+
+def paral_count_pairs(
+        freq_dict: dict[tuple, int],
+        num_processes: int = 4,
+) -> Counter:
+    items = list(freq_dict.items())
+    chunk_size = (len(items) + num_processes - 1) // num_processes
+    chunks = [items[i*chunk_size:(i+1)*chunk_size] for i in range(num_processes)]
+
+    with multiprocessing.Pool(num_processes) as pool:
+        results = pool.map(count_pairs, chunks)
+    freq_of_pairs = Counter()
+    for result in results:
+        freq_of_pairs.update(result)
+    return freq_of_pairs
+
+def train_bpe(
+    file_path: str | os.PathLike,
+    vocab_size: int,
+    special_tokens: list[str],
+    num_processes: int = 4,
+    rounds: int = 6,
+    **kwargs,
+) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
+    """Given the string, run train a BPE tokenizer and
+    output its vocabulary and merges.
+
+    Args:
+        file_path (str | os.PathLike): The data to train a BPE tokenizer on.
+        vocab_size (int): Total number of items in the tokenizer's vocabulary (including special tokens).
+        special_tokens (list[str]): A list of string special tokens to be added to the tokenizer vocabulary.
+            These strings will never be split into multiple tokens, and will always be
+            kept as a single token. If these special tokens occur in the `input_path`,
+            they are treated as any other string.
+
+    Returns:
+        tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
+            vocab:
+                The trained tokenizer vocabulary, a mapping from int (token ID in the vocabulary)
+                to bytes (token bytes)
+            merges:
+                BPE merges. Each list item is a tuple of bytes (<token1>, <token2>),
+                representing that <token1> was merged with <token2>.
+                Merges are ordered by order of creation.
+    """
+    num_special_tokens = len(special_tokens)
+    num_non_special_tokens = vocab_size - num_special_tokens
+    vocab = {i: chr(i) for i in range(num_non_special_tokens)}
+    merge: list[tuple[bytes, bytes]] = []
+    new_token = num_non_special_tokens
+    # -------------parallelize this part
+    with open(file_path, "rb") as f:
+        boundaries = find_chunk_boundaries(
+            f, num_processes, "<|endoftext|>".encode("utf-8"))
+            
+        # The following is a serial implementation, but you can parallelize this 
+        # by sending each start/end pair to a set of processes.
+        tasks = [
+            (file_path, start, end, special_tokens)
+            for start, end in zip(boundaries[:-1], boundaries[1:])
+        ]
+        # 使用进程池并行地处理每块
+        with multiprocessing.Pool(processes=num_processes) as pool:
+            results = pool.starmap(pre_tokenize, tasks)
+
+        freq_dict = Counter()
+        for sub_freq_dict in results:
+            freq_dict.update(sub_freq_dict)
+    # -------------end parallelize
+    freq_of_pairs = Counter()
+    # -------------parallelize this part didn't improve much
+    #freq_of_pairs = paral_count_pairs(freq_dict, num_processes)
+    for k, v in freq_dict.items():
+        assert type(k) == tuple # (bytes, bytes, bytes, ...)
+        for pair in zip(k[:-1], k[1:]):
+            freq_of_pairs[pair] = freq_of_pairs.get(pair, 0) + v
+    # -------------end of find couting freq
+    for _ in range(rounds):
+        max_freq_pair, _ = max(freq_of_pairs.items(), key=lambda x: (x[1],x[0])) # choose lexicographically greater pair if tied
+        vocab[new_token] = vocab[max_freq_pair[0]] + vocab[max_freq_pair[1]]
+        merge.append((vocab[max_freq_pair[0]], vocab[max_freq_pair[1]]))
+        new_freq_dict = {}
+        freq_of_pairs.pop(max_freq_pair)
+        for k, v in freq_dict.items():
+            new_k = []
+            i = 0
+            while i < len(k):
+                if i < len(k) - 1 and (k[i], k[i+1]) == max_freq_pair:
+                    # 增量更新freq_of_pairs
+                    if i > 0:
+                        freq_of_pairs[(k[i-1], k[i])] -= v
+                        freq_of_pairs[(k[i-1], new_token)] += v
+                    if i < len(k) - 2:
+                        freq_of_pairs[(k[i+1], k[i+2])] -= v 
+                        freq_of_pairs[(new_token, k[i+2])] += v
+                    new_k.append(new_token)
+                    i += 2
+                else:
+                    new_k.append(k[i])
+                    i += 1
+            new_freq_dict[tuple(new_k)] = v
+        new_token += 1
+        freq_dict = new_freq_dict
+                
+    for special_token in special_tokens:
+        vocab[new_token] = special_token
+        new_token += 1
+
+    return (vocab, merge)
+
+# TODO
+# using PAT to split
+def main () :
+    
+    start_time = time.time()
+    special_tokens = ["<|endoftext|>"]
+    num_special_tokens = len(special_tokens)
+    initial_num_tokens = 256
+    file_path = Path("../data/TinyStoriesV2-GPT4-train.txt")
+    vocab, merges = train_bpe(
+        file_path, 
+        initial_num_tokens+num_special_tokens, 
+        special_tokens, 
+        num_processes=3
+    )
+    print(vocab)
+    print(merges)
+    duration = time.time() - start_time
+    print(f"time cost: {duration:.2f}s")
+
+if __name__ == "__main__":  
+    main()
