@@ -1,9 +1,14 @@
 import os
+import time
 import multiprocessing
 import regex as re
 from typing import BinaryIO
 from pathlib import Path
 from collections import Counter
+from .logger_config import setup_logger
+from tqdm import tqdm
+
+logger = setup_logger(__name__)
 
 
 def find_chunk_boundaries(file: BinaryIO, desired_num_chunks: int, split_special_token: bytes) -> list[int]:
@@ -101,6 +106,7 @@ def train_bpe(
     file_path: str | os.PathLike,
     vocab_size: int,
     special_tokens: list[str],
+    verbose: bool = False,
     **kwargs,
 ) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
     """Given the string, run train a BPE tokenizer and
@@ -132,6 +138,9 @@ def train_bpe(
     vocab = {i: bytes([i]) for i in range(num_non_special_tokens)}
     merge: list[tuple[bytes, bytes]] = []
     new_token = num_non_special_tokens
+    if verbose:
+        logger.info(f"pre_tokenize start")
+    pre_tokenize_start = time.time()
     # -------------parallelize this part
     with open(file_path, "rb") as f:
         boundaries = find_chunk_boundaries(f, num_processes, b"<|endoftext|>")
@@ -147,6 +156,12 @@ def train_bpe(
         for sub_freq_dict in results:
             freq_dict.update(sub_freq_dict)
     # -------------end parallelize
+    if verbose:
+        time_cost = time.time() - pre_tokenize_start
+        logger.info(f"pre_tokenize cost {time_cost=:.2f}s")
+    initial_freq_count_start = time.time()
+    if verbose:
+        logger.info(f"initial_freq_count start")
     freq_of_pairs = Counter()
     # -------------parallelize this part didn't improve much
     # freq_of_pairs = paral_count_pairs(freq_dict, num_processes)
@@ -155,7 +170,11 @@ def train_bpe(
         for pair in zip(k[:-1], k[1:]):
             freq_of_pairs[pair] = freq_of_pairs.get(pair, 0) + v
     # -------------end of find couting freq
-    for round in range(rounds):
+    if verbose:
+        time_cost = time.time() - initial_freq_count_start
+        logger.info(f"initial_freq_count cost {time_cost=:.2f}s")
+    ranges = tqdm(range(rounds), desc="training bpe", unit="r") if verbose else range(rounds)
+    for round in ranges:
         max_freq = max(freq_of_pairs.values())
         candidates = [pair for pair, freq in freq_of_pairs.items() if freq == max_freq]
         # candidates = [(111, 207), (109, 203)...]
