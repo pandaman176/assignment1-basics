@@ -155,10 +155,12 @@ def train_bpe(
         for pair in zip(k[:-1], k[1:]):
             freq_of_pairs[pair] = freq_of_pairs.get(pair, 0) + v
     # -------------end of find couting freq
-    for _ in range(rounds):
-        max_freq_pair, _ = max(
-            freq_of_pairs.items(), key=lambda x: (x[1], x[0])
-        )  # choose lexicographically greater pair if tied
+    for round in range(rounds):
+        
+        max_freq = max(freq_of_pairs.values())
+        candidates = [pair for pair, freq in freq_of_pairs.items() if freq == max_freq]
+        #candidates = [(111, 207), (109, 203)...]
+        max_freq_pair = max(candidates, key=lambda x: (vocab[x[0]], vocab[x[1]])) # choose lexicographically greater pair if tied
         vocab[new_token] = vocab[max_freq_pair[0]] + vocab[max_freq_pair[1]]
         merge.append((vocab[max_freq_pair[0]], vocab[max_freq_pair[1]]))
         new_freq_dict = {}
@@ -198,10 +200,10 @@ def main():
     #file_path = Path("./data/TinyStoriesV2-GPT4-valid.txt").resolve()
     file_path = "tests/fixtures/corpus.en"
     vocab, merges = train_bpe(
-        file_path, 300, special_tokens,
+        file_path, 500, special_tokens,
     )
     print(vocab)
-    print(merges)
+    print(merges[90:100])
     print(type(vocab[1]))
 
 
