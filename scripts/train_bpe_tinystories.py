@@ -9,13 +9,13 @@ def main():
     # 当前文件的目录
     CURRENT_DIR = Path(__file__).parent
     special_tokens = ["<|endoftext|>"]
-    file_path = CURRENT_DIR.parent / "data/TinyStoriesV2-GPT4-valid.txt"
+    file_path = "/data/tuoge/TinyStoriesV2-GPT4-valid.txt"
     DUMP_PATH = CURRENT_DIR.parent / "models"
     logger.info("start training bpe on tinystories")
     start_time = time.time()
     vocab, merges = bpe.train_bpe(
         file_path,
-        500,
+        10_000,
         special_tokens,
         verbose=True,
     )
