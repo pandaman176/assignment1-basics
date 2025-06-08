@@ -1,12 +1,14 @@
 import os
+import heapq
 import time
 import multiprocessing
 import regex as re
 from typing import BinaryIO
 from pathlib import Path
 from collections import Counter
-from .logger_config import setup_logger
+from logger_config import setup_logger
 from tqdm import tqdm
+from dataclasses import dataclass
 
 logger = setup_logger(__name__)
 
@@ -101,12 +103,27 @@ def paral_count_pairs(
         freq_of_pairs.update(result)
     return freq_of_pairs
 
+@dataclass
+class bytes_pair_with_freq:
+    freq: int
+    int_pair: tuple[int, int]
+    bytes_pair: tuple[bytes, bytes]
+
+    def __lt__(self, other):
+        # 按最小堆逆序排
+        if self.freq == other.freq:
+            return self.bytes_pair > other.bytes_pair
+        else:
+            return self.freq > other.freq
+    def __repr__(self):
+        return f"f:{self.freq}, b:{self.bytes_pair}"
 
 def train_bpe(
     file_path: str | os.PathLike,
     vocab_size: int,
     special_tokens: list[str],
     verbose: bool = False,
+    use_heap: bool = False,
     **kwargs,
 ) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
     """Given the string, run train a BPE tokenizer and
@@ -165,22 +182,44 @@ def train_bpe(
     freq_of_pairs = Counter()
     # -------------parallelize this part didn't improve much
     # freq_of_pairs = paral_count_pairs(freq_dict, num_processes)
+    candidates = []
     for k, v in freq_dict.items():
-        # assert type(k) == tuple  # (bytes, bytes, bytes, ...)
+        # assert type(k) == tuple  # (int, int, int, ...)
         for pair in zip(k[:-1], k[1:]):
             freq_of_pairs[pair] = freq_of_pairs.get(pair, 0) + v
+            candidate = bytes_pair_with_freq(freq_of_pairs[pair], pair, (vocab[pair[0]], vocab[pair[1]]))
+            if use_heap:
+                heapq.heappush(candidates, candidate)
     # -------------end of find couting freq
     if verbose:
         time_cost = time.time() - initial_freq_count_start
         logger.info(f"initial_freq_count cost {time_cost=:.2f}s")
     ranges = tqdm(range(rounds), desc="training bpe", unit="r") if verbose else range(rounds)
+    
     for round in ranges:
-        max_freq = max(freq_of_pairs.values())
-        candidates = [pair for pair, freq in freq_of_pairs.items() if freq == max_freq]
-        # candidates = [(111, 207), (109, 203)...]
-        max_freq_pair = max(
-            candidates, key=lambda x: (vocab[x[0]], vocab[x[1]])
-        )  # choose lexicographically greater pair if tied
+        max_freq_pair = None
+        if not use_heap:
+            # print(merge)
+            max_freq = max(freq_of_pairs.values())
+            candidates = [pair for pair, freq in freq_of_pairs.items() if freq == max_freq]
+            # candidates = [(111, 207), (109, 203)...]
+            max_freq_pair = max(
+                candidates, key=lambda x: (vocab[x[0]], vocab[x[1]])
+            )  # choose lexicographically greater pair if tied
+        else:
+            while candidates:
+                candidate: bytes_pair_with_freq = heapq.heappop(candidates)
+                # 校验这个 pair 是否是当前频率最大项
+                freq, pair = candidate.freq, candidate.int_pair
+                max_freq_pair = pair
+                #print("check: ", pair, freq)
+                #print(f"check {pair in freq_of_pairs}, {freq_of_pairs[pair]=}, {freq=}")
+                if pair in freq_of_pairs and freq == freq_of_pairs[pair]:
+                    # 有效，执行合并
+                    break
+                # 否则是过期的记录，跳过
+                #print(f"skip {pair}")
+        
         vocab[new_token] = vocab[max_freq_pair[0]] + vocab[max_freq_pair[1]]
         merge.append((vocab[max_freq_pair[0]], vocab[max_freq_pair[1]]))
         new_freq_dict = {}
@@ -194,9 +233,19 @@ def train_bpe(
                     if i > 0:
                         freq_of_pairs[(k[i - 1], k[i])] -= v
                         freq_of_pairs[(k[i - 1], new_token)] += v
+                        if use_heap:
+                            update_candidate = bytes_pair_with_freq(freq_of_pairs[(k[i-1], k[i])], (k[i-1], k[i]), (vocab[k[i-1]], vocab[k[i]]))
+                            heapq.heappush(candidates, update_candidate)
+                            new_candidate = bytes_pair_with_freq(freq_of_pairs[(k[i-1], new_token)], (k[i-1], new_token), (vocab[k[i-1]], vocab[new_token]))
+                            heapq.heappush(candidates, new_candidate)
                     if i < len(k) - 2:
                         freq_of_pairs[(k[i + 1], k[i + 2])] -= v
                         freq_of_pairs[(new_token, k[i + 2])] += v
+                        if use_heap:
+                            update_candidate = bytes_pair_with_freq(freq_of_pairs[(k[i+1], k[i+2])], (k[i+1], k[i+2]), (vocab[k[i+1]], vocab[k[i+2]]))
+                            heapq.heappush(candidates, update_candidate)
+                            new_candidate = bytes_pair_with_freq(freq_of_pairs[(new_token, k[i+2])], (new_token, k[i+2]), (vocab[new_token], vocab[k[i+2]]))
+                            heapq.heappush(candidates, new_candidate)
                     new_k.append(new_token)
                     i += 2
                 else:
@@ -214,19 +263,23 @@ def train_bpe(
 
 
 def main():
+    start = time.time()
+    use_heap = False
     special_tokens = ["<|endoftext|>"]
     num_special_tokens = len(special_tokens)
     initial_num_tokens = 256
-    # file_path = Path("./data/TinyStoriesV2-GPT4-valid.txt").resolve()
-    file_path = "tests/fixtures/corpus.en"
+    file_path = Path("./data/TinyStoriesV2-GPT4-valid.txt").resolve()
     vocab, merges = train_bpe(
         file_path,
-        500,
+        800,
         special_tokens,
+        verbose=False,
+        use_heap=use_heap,
     )
-    print(vocab)
-    print(merges[90:100])
-    print(type(vocab[1]))
+    #print(vocab)
+    #print(merges)
+    end = time.time()
+    print(f"cost {end-start=:.2f}s, {use_heap=}")
 
 
 if __name__ == "__main__":

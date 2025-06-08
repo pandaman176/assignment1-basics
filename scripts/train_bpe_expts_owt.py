@@ -15,7 +15,7 @@ def main():
     start_time = time.time()
     vocab, merges = bpe.train_bpe(
         file_path,
-        100,
+        32_000,
         special_tokens,
         verbose=True,
     )

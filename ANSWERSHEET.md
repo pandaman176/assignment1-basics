@@ -63,6 +63,7 @@ tests/test_train_bpe.py::test_train_bpe_special_tokens PASSED
 Solution: convert file to LF format or use `git config --global core.autocrlf input` to convert automatically before git clone
 
 > TODO: can further speed up
+    using sorted dict
 
 ## training result on TinyStory
 ```bash
