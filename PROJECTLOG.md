@@ -62,9 +62,6 @@ tests/test_train_bpe.py::test_train_bpe_special_tokens PASSED
 > Note: the test may failed on wsl/windows since file is in CRLF format.
 Solution: convert file to LF format or use `git config --global core.autocrlf input` to convert automatically before git clone
 
-> TODO: can further speed up
-    using sorted dict
-
 ## training result on TinyStory
 ```bash
 (base) tuoge@hltsz01:~/workspace/cs336/assignment1-basics$ uv run scripts/train_bpe_tinystories.py
