@@ -41,3 +41,23 @@ e.g. "你好“.encode() gives b'\xe4\xbd\xa0\xe5\xa5\xbd' where each chinese ch
 
 (c)Give a two byte sequence that does not decode to any Unicode character(s).
 b'\xe4\xbd'
+
+# 2.5
+
+Problem (train_bpe): BPE Tokenizer Training
+```bash
+=================================================== test session starts ===================================================
+platform linux -- Python 3.12.3, pytest-8.3.5, pluggy-1.5.0
+rootdir: /home/wen/learn/cs336/assignment1-basics
+configfile: pyproject.toml
+plugins: jaxtyping-0.3.1
+collected 3 items                                                                                                         
+
+tests/test_train_bpe.py::test_train_bpe_speed PASSED
+tests/test_train_bpe.py::test_train_bpe PASSED
+tests/test_train_bpe.py::test_train_bpe_special_tokens PASSED
+
+==================================================== 3 passed in 9.54s ====================================================
+```
+> Note: the test may failed on wsl/windows since file is in CRLF format.
+Solution: convert file to LF format or use `git config --global core.autocrlf input` to convert automatically before git clone
