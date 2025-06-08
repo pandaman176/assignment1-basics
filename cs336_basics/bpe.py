@@ -6,7 +6,7 @@ import regex as re
 from typing import BinaryIO
 from pathlib import Path
 from collections import Counter
-from logger_config import setup_logger
+from .logger_config import setup_logger
 from tqdm import tqdm
 from dataclasses import dataclass
 

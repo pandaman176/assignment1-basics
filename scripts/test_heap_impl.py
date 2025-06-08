@@ -9,13 +9,13 @@ def main():
     # 当前文件的目录
     CURRENT_DIR = Path(__file__).parent
     special_tokens = ["<|endoftext|>"]
-    file_path = "/data/tuoge/TinyStoriesV2-GPT4-valid.txt"
+    file_path = "/data/tuoge/TinyStoriesV2-GPT4-train.txt"
     DUMP_PATH = CURRENT_DIR.parent / "models"
     logger.info("start training bpe on tinystories")
     start_time = time.time()
     vocab, merges = bpe.train_bpe(
         file_path,
-        10_000,
+        1_000,
         special_tokens,
         verbose=True,
         use_heap=False
@@ -25,7 +25,7 @@ def main():
     logger.info(f"finish training bpe, {time_cost=:.2f}s")
     vocab_2, merges_2 = bpe.train_bpe(
         file_path,
-        10_000,
+        1_000,
         special_tokens,
         verbose=True,
         use_heap=True
