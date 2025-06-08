@@ -594,7 +594,7 @@ def run_train_bpe(
         input_path,
         vocab_size,
         special_tokens,
-        use_heap=True,  # dataset is small, use heap is not efficient
+        use_heap=False,  # dataset is small, use heap is not efficient
         **kwargs,
     )
     raise NotImplementedError
