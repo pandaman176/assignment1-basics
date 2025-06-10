@@ -12,7 +12,11 @@ def main():
     CURRENT_DIR = Path(__file__).parent
     special_tokens = ["<|endoftext|>"]
     logger.info(f"hostname: {socket.gethostname()}")
-    file_path = "./data/TinyStoriesV2-GPT4-valid.txt" if socket.gethostname() == "TABLET-WEN" else "/data/tuoge/TinyStoriesV2-GPT4-train.txt"
+    file_path = (
+        "./data/TinyStoriesV2-GPT4-valid.txt"
+        if socket.gethostname() == "TABLET-WEN"
+        else "/data/tuoge/TinyStoriesV2-GPT4-train.txt"
+    )
     DUMP_PATH = CURRENT_DIR.parent / "models"
     logger.info("start training bpe on tinystories")
     start_time = time.time()

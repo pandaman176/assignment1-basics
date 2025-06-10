@@ -63,16 +63,12 @@ tests/test_train_bpe.py::test_train_bpe_special_tokens PASSED
 Solution: convert file to LF format or use `git config --global core.autocrlf input` to convert automatically before git clone
 
 ## training result on TinyStory
-```bash
-(base) tuoge@hltsz01:~/workspace/cs336/assignment1-basics$ uv run scripts/train_bpe_tinystories.py
-[2025-06-08 17:11:47] [INFO] __main__: start training bpe on tinystories
-[2025-06-08 17:11:47] [INFO] cs336_basics.bpe: pre_tokenize start
-[2025-06-08 17:11:48] [INFO] cs336_basics.bpe: pre_tokenize cost time_cost=1.81s
-[2025-06-08 17:11:48] [INFO] cs336_basics.bpe: initial_freq_count start
-[2025-06-08 17:11:48] [INFO] cs336_basics.bpe: initial_freq_count cost time_cost=0.02s
-training bpe: 100%|█████████████████████████████████████████████████████████████████| 9743/9743 [01:15<00:00, 128.83r/s]
-[2025-06-08 17:13:04] [INFO] __main__: finish training bpe on tinystories, time_cost=77.46s
-[2025-06-08 17:13:04] [INFO] __main__: dump file ...
-[2025-06-08 17:13:04] [INFO] __main__: vocab size 10000
-[2025-06-08 17:13:04] [INFO] __main__: merges size 9743
-```
+
+longest token: b' accomplishment'
+most time spent on merges
+
+## training result on Online Web Text
+
+Too long to take: estimate 3days to finish
+
+# 2.6
