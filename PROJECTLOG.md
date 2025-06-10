@@ -20,7 +20,7 @@ null character
 ```
 '\x00' is not visible character so `print()` won't print it. 
 
-# 2.2 
+# 2.2
 
 (a)What are some reasons to prefer training our tokenizer on UTF-8 encoded bytes, rather than
 UTF-16 or UTF-32? It may be helpful to compare the output of these encodings for various
@@ -72,3 +72,43 @@ most time spent on merges
 Too long to take: estimate 3days to finish
 
 # 2.6
+
+```bash
+(base) tuoge@hltsz01:~/workspace/cs336/assignment1-basics$ uv run pytest tests/test_tokenizer.py
+================================================= test session starts ==================================================
+platform linux -- Python 3.11.7, pytest-8.3.5, pluggy-1.5.0
+rootdir: /home/tuoge/workspace/cs336/assignment1-basics
+configfile: pyproject.toml
+plugins: jaxtyping-0.3.1
+collected 25 items
+
+tests/test_tokenizer.py::test_roundtrip_empty PASSED
+tests/test_tokenizer.py::test_empty_matches_tiktoken PASSED
+tests/test_tokenizer.py::test_roundtrip_single_character PASSED
+tests/test_tokenizer.py::test_single_character_matches_tiktoken PASSED
+tests/test_tokenizer.py::test_roundtrip_single_unicode_character PASSED
+tests/test_tokenizer.py::test_single_unicode_character_matches_tiktoken PASSED
+tests/test_tokenizer.py::test_roundtrip_ascii_string PASSED
+tests/test_tokenizer.py::test_ascii_string_matches_tiktoken PASSED
+tests/test_tokenizer.py::test_roundtrip_unicode_string PASSED
+tests/test_tokenizer.py::test_unicode_string_matches_tiktoken PASSED
+tests/test_tokenizer.py::test_roundtrip_unicode_string_with_special_tokens PASSED
+tests/test_tokenizer.py::test_unicode_string_with_special_tokens_matches_tiktoken PASSED
+tests/test_tokenizer.py::test_overlapping_special_tokens PASSED
+tests/test_tokenizer.py::test_address_roundtrip PASSED
+tests/test_tokenizer.py::test_address_matches_tiktoken PASSED
+tests/test_tokenizer.py::test_german_roundtrip PASSED
+tests/test_tokenizer.py::test_german_matches_tiktoken PASSED
+tests/test_tokenizer.py::test_tinystories_sample_roundtrip PASSED
+tests/test_tokenizer.py::test_tinystories_matches_tiktoken PASSED
+tests/test_tokenizer.py::test_encode_special_token_trailing_newlines PASSED
+tests/test_tokenizer.py::test_encode_special_token_double_newline_non_whitespace PASSED
+tests/test_tokenizer.py::test_encode_iterable_tinystories_sample_roundtrip PASSED
+tests/test_tokenizer.py::test_encode_iterable_tinystories_matches_tiktoken PASSED
+tests/test_tokenizer.py::test_encode_iterable_memory_usage PASSED
+tests/test_tokenizer.py::test_encode_memory_usage XFAIL (Tokenizer.encode is expected to take more memory th...)
+
+====================================== 24 passed, 1 xfailed in 3349.54s (0:55:49) ======================================
+```
+
+# 2.7
