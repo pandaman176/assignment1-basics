@@ -2,6 +2,7 @@ from cs336_basics import logger_config, bpe_tokenizer, useful_path
 import os
 import time
 import numpy as np
+from pathlib import Path
 
 
 logger = logger_config.setup_logger(__name__)
@@ -61,7 +62,7 @@ def train_onts():
     )
 
     logger.info("encode TinyStoriesV2-GPT4-train.txt")
-    with open(DATA_PATH / "TinyStoriesV2-GPT4-sample.txt", "r", encoding="utf-8") as f:
+    with open(Path(DATA_PATH) / "TinyStoriesV2-GPT4-train.txt", "r", encoding="utf-8") as f:
         ids = []
         for _id in ts_tokenizer.encode_iterable(f):
             ids.append(_id)
@@ -70,7 +71,6 @@ def train_onts():
         logger.info(f"save tinystories_train_ids.npy")
 
 def main():
-    exp_on_ts()
     train_onts()
 
 
