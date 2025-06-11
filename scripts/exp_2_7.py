@@ -70,8 +70,14 @@ def train_onts():
         np.save(DUMP_PATH / "tinystories_train_ids.npy", arr)
         logger.info(f"save tinystories_train_ids.npy")
 
+def test_load_arr():
+    DUMP_PATH = useful_path.DUMP_PATH
+    logger.info("load tinystories_train_ids.npy")
+    arr = np.load(DUMP_PATH / "tinystories_train_ids.npy")
+    print(arr[:10])
+
 def main():
-    train_onts()
+    test_load_arr()
 
 
 if __name__ == "__main__":

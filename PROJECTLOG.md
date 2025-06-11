@@ -112,3 +112,17 @@ tests/test_tokenizer.py::test_encode_memory_usage XFAIL (Tokenizer.encode is exp
 ```
 
 # 2.7
+```bash
+(cs336-basics) wen@~/learn/cs336/assignment1-basics (main)$ uv run scripts/exp_2_7.py 
+[2025-06-10 15:34:05] [INFO] __main__: tiny story tokenizer compress ratio on tinystories: 1.55
+[2025-06-10 15:34:05] [INFO] __main__: tiny story tokenizer compress ratio on owt: 1.34
+[2025-06-10 15:34:05] [INFO] __main__: throughput : 205437.20bytes/s
+```
+compress ration goes down when encode open web text shows thathe tokenizer trained
+on tiny stories is less efficiency in encoding OWT
+
+Our tokenizer achieves a throughput of approximately 205,437 bytes/second. At this rate, it would take about 46 days to tokenize the full 825GB Pile dataset.
+
+uint16 is used to save the ids, which is more efficient than uint32 since token_id wouldn't be very large(10k on ts and 32k on owt)
+
+# 2.8
