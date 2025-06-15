@@ -386,8 +386,8 @@ def run_transformer_lm(
     """
     ts_lm = MyModules.transformer_lm(vocab_size, context_length, num_layers, d_model, num_heads, d_ff, rope_theta)
     ts_lm.load_weights(weights)
-    token_positions = repeat(torch.arange(in_indices.shape[-2], device=in_indices.device), 's -> b s', b=in_indices.shape[0])
-    seq_len = in_indices.shape[-2]
+    token_positions = repeat(torch.arange(in_indices.shape[-1], device=in_indices.device), 's -> b s', b=in_indices.shape[0])
+    seq_len = in_indices.shape[-1]
     causal_mask = ~torch.triu(torch.ones(seq_len, seq_len, device=in_indices.device, dtype=torch.bool), diagonal=1).bool()
     return ts_lm(in_indices, mask=causal_mask, token_positions=token_positions)
     raise NotImplementedError

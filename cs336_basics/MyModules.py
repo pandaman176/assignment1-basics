@@ -266,6 +266,7 @@ class transformer_block(nn.Module):
         return x
 
     def load_weights(self, weights: dict[str, torch.Tensor]):
+        """only used for adapter to load the weights not for general use"""
         with torch.no_grad():
             q_proj_weight = weights["attn.q_proj.weight"]
             k_proj_weight = weights["attn.k_proj.weight"]
@@ -306,7 +307,10 @@ class transformer_lm(nn.Module):
         self.dtype = dtype
         
         self.token_embeddings = Embedding(vocab_size, d_model)
-        self.layers = nn.ModuleList([transformer_block(d_model, num_heads, d_ff, rope_theta, context_length) for _ in range(num_layers)])
+        self.layers = nn.ModuleList([
+            transformer_block(d_model, num_heads, d_ff, rope_theta, context_length) 
+            for _ in range(num_layers)
+        ])
         self.ln_final = RMSNorm(d_model)
         self.lm_head = Linear(d_model, vocab_size)
 
@@ -322,10 +326,12 @@ class transformer_lm(nn.Module):
             x = layer(x, mask, token_positions) # (batch_size, sequence_length, d_model)
         x = self.ln_final(x) # (batch_size, sequence_length, d_model)
         x = self.lm_head(x) # (batch_size, sequence_length, vocab_size)
-        x = softmax(x, dim=-1) # (batch_size, sequence_length, vocab_size)
+        # 不在这里进行softmax, 因为直接在最后利用log-softmax计算loss
+        # x = softmax(x, dim=-1) # (batch_size, sequence_length, vocab_size)
         return x
     
     def load_weights(self, weights: dict[str, torch.Tensor]):
+        """only used for adapter to load the weights not for general use"""
         with torch.no_grad():
             self.token_embeddings.weight.copy_(weights["token_embeddings.weight"])
             for index, layer in enumerate(self.layers):
