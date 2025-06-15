@@ -124,5 +124,3 @@ on tiny stories is less efficiency in encoding OWT
 Our tokenizer achieves a throughput of approximately 205,437 bytes/second. At this rate, it would take about 46 days to tokenize the full 825GB Pile dataset.
 
 uint16 is used to save the ids, which is more efficient than uint32 since token_id wouldn't be very large(10k on ts and 32k on owt)
-
-# 2.8
