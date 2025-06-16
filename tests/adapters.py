@@ -7,7 +7,7 @@ from jaxtyping import Float, Int
 import numpy.typing as npt
 import torch
 from torch import Tensor
-from cs336_basics import MyModules, bpe_tokenizer, bpe_train
+from cs336_basics import MyModules, bpe_tokenizer, bpe_train, transformer_train
 from einops import repeat
 
 
@@ -453,6 +453,8 @@ def run_get_batch(
         is the sampled input sequences, and the second tuple item is the corresponding
         language modeling labels.
     """
+    return transformer_train.get_batch(dataset, batch_size, context_length, device)
+
     raise NotImplementedError
 
 
@@ -558,6 +560,7 @@ def run_save_checkpoint(
             we've completed.
         out (str | os.PathLike | BinaryIO | IO[bytes]): Path or file-like object to serialize the model, optimizer, and iteration to.
     """
+    return transformer_train.save_checkpoint(model, optimizer, iteration, out)
     raise NotImplementedError
 
 
@@ -579,6 +582,7 @@ def run_load_checkpoint(
     Returns:
         int: the previously-serialized number of iterations.
     """
+    return transformer_train.load_checkpoint(src, model, optimizer)
     raise NotImplementedError
 
 
