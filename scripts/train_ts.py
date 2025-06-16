@@ -66,7 +66,7 @@ def train():
     
     # 初始化模型
     logger.info("开始初始化模型...")
-    model = MyModules.TransformerLM(
+    model = MyModules.transformer_lm(
         vocab_size=model_config["vocab_size"],
         context_length=model_config["context_length"],
         num_layers=model_config["num_layers"],
@@ -80,7 +80,7 @@ def train():
 
     # 初始化优化器
     logger.info("开始初始化优化器...")
-    optimizer = MyModules.AdamWOptimizer(
+    optimizer = MyModules.AdamW(
         model.parameters(),
         lr=optim_config["lr"],
         weight_decay=optim_config["weight_decay"],
@@ -155,7 +155,7 @@ def train():
         if step % train_config["log_freq"] == 0:
             grad_norm = MyModules.grad_norm(model.parameters())
         
-        MyModules.clip_grad(model.parameters(), max_norm=optim_config["max_norm"]) # 梯度裁剪
+        MyModules.clip_grad_norm_(model.parameters(), max_norm=optim_config["max_norm"]) # 梯度裁剪
         optimizer.step()
 
         # 日志记录
@@ -265,9 +265,9 @@ if __name__ == "__main__":
     log_path = WORK_DIR / "logs/train_v0.log"
     logger.add(log_path, rotation="1 day", retention="7 days", level="INFO")
     TRAIN_DATA_PATH = DUMP_PATH / "tinystories_train_ids.npy"
-    VAL_DATA_PATH = None,  # 验证集路径
-    CHECKPOINT_LOAD_PATH = None,  # 模型检查点路径
-    CHECKPOINT_SAVE_FORMAT = WORK_DIR / "models/checkpoints/checkpoint_v0_{}.pt",  # 检查点保存路径格式
-    FINAL_MODEL_PATH = WORK_DIR / "models/finals/final_model_v0.pt",  # 最终模型保存路径
+    VAL_DATA_PATH = None  # 验证集路径
+    CHECKPOINT_LOAD_PATH = None  # 模型检查点路径
+    CHECKPOINT_SAVE_FORMAT = WORK_DIR / "models/checkpoints/checkpoint_v0_{}.pt"  # 检查点保存路径格式
+    FINAL_MODEL_PATH = WORK_DIR / "models/finals/final_model_v0.pt"  # 最终模型保存路径
 
     train()
