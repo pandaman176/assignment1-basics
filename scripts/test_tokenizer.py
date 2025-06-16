@@ -1,4 +1,4 @@
-from cs336_basics import bpe, logger_config, json_saver, bpe_tokenizer
+from cs336_basics import bpe_train, logger_config, json_saver, bpe_tokenizer
 from pathlib import Path
 import os
 import time
@@ -25,7 +25,7 @@ def main():
     ):
         logger.info("start training bpe on tinystories")
         start_time = time.time()
-        vocab, merges = bpe.train_bpe(
+        vocab, merges = bpe_train.train_bpe(
             file_path,
             300 if socket.gethostname() == "TABLET-WEN" else 10_000,
             special_tokens,

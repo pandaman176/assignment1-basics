@@ -1,4 +1,4 @@
-from cs336_basics import bpe, logger_config, json_saver
+from cs336_basics import bpe_train, logger_config, json_saver
 from pathlib import Path
 import os
 import time
@@ -16,7 +16,7 @@ def main():
     DUMP_PATH = CURRENT_DIR.parent / "models"
     logger.info("start training bpe on Online Web Text")
     start_time = time.time()
-    vocab, merges = bpe.train_bpe(
+    vocab, merges = bpe_train.train_bpe(
         file_path,
         300 if socket.gethostname() == "TABLET-WEN" else 32_000,
         special_tokens,

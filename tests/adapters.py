@@ -7,7 +7,7 @@ from jaxtyping import Float, Int
 import numpy.typing as npt
 import torch
 from torch import Tensor
-from cs336_basics import MyModules, bpe_tokenizer, bpe
+from cs336_basics import MyModules, bpe_tokenizer, bpe_train
 from einops import repeat
 
 
@@ -629,7 +629,7 @@ def run_train_bpe(
                 representing that <token1> was merged with <token2>.
                 Merges are ordered by order of creation.
     """
-    return bpe.train_bpe(
+    return bpe_train.train_bpe(
         input_path,
         vocab_size,
         special_tokens,
