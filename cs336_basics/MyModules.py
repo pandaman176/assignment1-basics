@@ -2,7 +2,7 @@ from torch import nn
 import torch
 import torch.nn.functional as F
 import math
-from typing import Optional, Callable
+from typing import Optional, Callable, Iterable
 from torch import Tensor
 from einops import einsum, reduce, rearrange, repeat
 from jaxtyping import Float, Bool, Int
@@ -458,3 +458,53 @@ class AdamW(torch.optim.Optimizer):
 
                 state["t"] = t + 1
         return loss
+
+def cosine_decay_schedule(
+    iteration: int,
+    max_learning_rate: float,
+    min_learning_rate: float,
+    warmup_iters: int,
+    anneal_iters: int,
+) -> float:
+    if iteration < warmup_iters:
+        return iteration / warmup_iters * max_learning_rate
+    elif iteration <= anneal_iters:
+        return min_learning_rate + 0.5*(1+math.cos(math.pi * (iteration-warmup_iters)/(anneal_iters - warmup_iters)))*(max_learning_rate - min_learning_rate)  
+    else:
+        return min_learning_rate
+
+def clip_grad_norm_(
+        parameters: Iterable[torch.nn.Parameter] | Tensor,
+        max_norm: float,
+        norm_type: float = 2.0,
+        eps: float = 1e-6,
+) -> None:
+    """Clips gradient norm of an iterable of parameters."""
+    if isinstance(parameters, torch.Tensor):
+        parameters = [parameters]
+    # skip parameters that don't require gradient
+    parameters = [p for p in parameters if p.grad is not None]
+
+    if len(parameters) == 0:
+        return torch.tensor(0.)
+
+    # 计算总梯度范数（不同范数类型）
+    if norm_type == float('inf'):
+        total_norm = max(p.grad.detach().abs().max() for p in parameters)
+        # call detach() because we don't want to keep the second order gradient
+    else:
+        total_norm = torch.norm(
+            torch.stack([
+                torch.norm(p.grad.detach(), norm_type)
+                for p in parameters
+            ]),
+            norm_type
+        )
+
+    # 缩放因子（只在超出 max_norm 时才缩放）
+    clip_coef = max_norm / (total_norm + eps)
+    if total_norm > max_norm:
+        for p in parameters:
+            p.grad.detach().mul_(clip_coef)
+
+    return total_norm
