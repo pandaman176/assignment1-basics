@@ -2,6 +2,7 @@ from torch import nn
 import torch
 import torch.nn.functional as F
 import math
+from typing import Optional, Callable
 from torch import Tensor
 from einops import einsum, reduce, rearrange, repeat
 from jaxtyping import Float, Bool, Int
@@ -353,3 +354,107 @@ class transformer_lm(nn.Module):
                 layer.ln2.scale.copy_(weights[f"layers.{index}.ln2.weight"])
             self.ln_final.scale.copy_(weights["ln_final.weight"])
             self.lm_head.weight.copy_(weights["lm_head.weight"])
+
+################Training#############
+
+def cross_entropy_loss(logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+    """
+    Compute cross-entropy loss:
+        ℓ_i = -log(softmax(o_i)[x_{i+1}])
+    
+    Args:
+        logits: Tensor of shape (..., vocab_size)
+        targets: Tensor of indices, shape matching logits.shape[:-1]
+    
+    Returns:
+        Scalar tensor: average cross-entropy loss across all batch-like dimensions
+    """
+    # Subtract max logit for numerical stability
+    logits_stable = logits - logits.max(dim=-1, keepdim=True).values  # (..., vocab_size)
+
+    # sum(exp(o_i(a)), a=1..vocab_size)
+    logsumexp = torch.log(torch.sum(torch.exp(logits_stable), dim=-1))  # (...)
+
+    # Use torch.gather to pick the predicted logit corresponding to the target index
+    target_logits = torch.gather(logits_stable, dim=-1, index=targets.unsqueeze(-1)).squeeze(-1)  # (...)
+
+    # Compute negative log-likelihood
+    loss = logsumexp - target_logits  # (...)
+
+    # Average over all batch-like dimensions
+    return loss.mean()
+
+class SGD(torch.optim.Optimizer):
+    def __init__(self, params, lr=1e-3):
+        if lr < 0:
+            raise ValueError(f"Invalid learning rate: {lr}")
+        defaults = {"lr": lr}
+        super().__init__(params, defaults)
+
+    def step(self, closure: Optional[Callable] = None):
+        # The API specifies that the user might pass in a callable closure to re-compute the loss before the optimizer
+        # step. We won’t need this for the optimizers we’ll use, but we add it to comply with the API
+        loss = None if closure is None else closure()
+        for group in self.param_groups:
+            lr = group["lr"]
+            # Get the learning rate.
+            for p in group["params"]:
+                if p.grad is None:
+                    continue
+                state = self.state[p]
+                # Get state associated with p.
+                t = state.get("t", 0)
+                # Get iteration number from the state, or initial value.
+                grad = p.grad.data
+                # Get the gradient of loss with respect to p.
+                p.data -= lr / math.sqrt(t + 1) * grad
+                # Update weight tensor in-place.
+                state["t"] = t + 1
+                # Increment iteration number.
+        return loss
+
+class AdamW(torch.optim.Optimizer):
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0):
+        if lr < 0:
+            raise ValueError(f"Invalid learning rate: {lr}")
+        defaults = {"lr": lr, "betas": betas, "eps": eps, "weight_decay": weight_decay}
+        super().__init__(params, defaults)
+
+    def step(self, closure: Optional[Callable] = None):
+        loss = None if closure is None else closure()
+        for group in self.param_groups:
+            lr = group["lr"]
+            beta1, beta2 = group["betas"]
+            eps = group["eps"]
+            weight_decay = group["weight_decay"]
+            for p in group["params"]:
+                if p.grad is None:
+                    continue
+                grad = p.grad.data
+                # 初始化 state
+                if p not in self.state:
+                    self.state[p] = {
+                        "t": 1,
+                        "m": torch.zeros_like(p.data),
+                        "v": torch.zeros_like(p.data),
+                    }
+                state = self.state[p]
+                m, v, t = state["m"], state["v"], state["t"]
+
+                # 更新一阶和二阶矩估计
+                #m = beta1 * m + (1 - beta1) * grad WRONG WAY!!! assign modified data to local variable
+                m.mul_(beta1).add_(grad, alpha=1 - beta1)
+                #v = beta2 * v + (1 - beta2) * grad.pow(2)
+                v.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
+
+                # 偏差修正项
+                a_t = lr * math.sqrt(1 - beta2**t) / (1 - beta1**t)
+                # 参数更新
+                #p.data -= a_t * m / (v.sqrt() + eps)
+                p.data.addcdiv_(m, v.sqrt().add(eps), value=-a_t)
+
+                if weight_decay != 0: # 减少不必要的计算
+                    p.data = p.data.add(p.data, alpha=-lr * weight_decay)
+
+                state["t"] = t + 1
+        return loss

@@ -268,3 +268,117 @@ change?
 
 这是因为注意力计算中的 $4BS^2 d_m$ 项对上下文长度非常敏感，增长为平方级别，大于其他线性项。
 
+
+# 4.2
+As we will see, one of the hyperparameters that affects training the most is the learning rate. Let’s
+see that in practice in our toy example. Run the SGD example above with three other values for the
+learning rate: 1e1, 1e2, and 1e3, for just 10 training iterations. What happens with the loss for each
+of these learning rates? Does it decay faster, slower, or does it diverge (i.e., increase over the course of
+training)?
+
+```bash
+(cs336-basics) wen@~/learn/cs336/assignment1-basics (main)$ uv run scripts/learning_rate_tuning.py 
+learning rate 10.0
+    iteration 0, loss 25.616933822631836
+    iteration 1, loss 16.39483642578125
+    iteration 2, loss 12.08557415008545
+    iteration 3, loss 9.455672264099121
+    iteration 4, loss 7.659092903137207
+    iteration 5, loss 6.350265979766846
+    iteration 6, loss 5.355607509613037
+    iteration 7, loss 4.576518535614014
+    iteration 8, loss 3.9521842002868652
+    iteration 9, loss 3.442791700363159
+learning rate 100.0
+    iteration 0, loss 3.021080255508423
+    iteration 1, loss 3.0210800170898438
+    iteration 2, loss 0.5183352828025818
+    iteration 3, loss 0.012404930777847767
+    iteration 4, loss 2.3065317613026662e-17
+    iteration 5, loss 2.570772912262475e-19
+    iteration 6, loss 8.656697141960322e-21
+    iteration 7, loss 5.156853662060393e-22
+    iteration 8, loss 4.423881784925862e-23
+    iteration 9, loss 4.915424249298786e-24
+learning rate 1000.0
+    iteration 0, loss 6.640196240576474e-25
+    iteration 1, loss 2.397110496735385e-22
+    iteration 2, loss 4.140186953609368e-20
+    iteration 3, loss 4.6055162439783374e-18
+    iteration 4, loss 3.7304678308861113e-16
+    iteration 5, loss 2.3543521326290298e-14
+    iteration 6, loss 1.2086473315242596e-12
+    iteration 7, loss 5.2001181138905395e-11
+    iteration 8, loss 1.9166528364422675e-09
+    iteration 9, loss 6.154584752948722e-08
+```
+
+it start to diverge when learning rate get bigger
+
+
+# 4.3 Resources Acounting for AdamW
+
+Let us compute how much memory and compute running AdamW requires. Assume we are using
+float32 for every tensor.
+
+(a) How much peak memory does running AdamW require? Decompose your answer based on the
+memory usage of the parameters, activations, gradients, and optimizer state. Express your answer
+in terms of the batch_size and the model hyperparameters (vocab_size, context_length,
+num_layers, d_model, num_heads). Assume d_ff = 4 × d_model.
+For simplicity, when calculating memory usage of activations, consider only the following compo-
+nents: 
+* Transformer block
+    - RMSNorm(s)
+    - Multi-head self-attention sublayer: QKV projections, Q⊤K matrix multiply, softmax,
+    weighted sum of values, output projection.
+    - Position-wise feed-forward: W1 matrix multiply, SiLU, W2 matrix multiply
+* final RMSNorm
+* output embedding
+* cross-entropy on logits
+
+#parameter = $4n d_m^2 + 3n d_m d_{ff} + (2n+1)d_m + 2d_m d_v + $ \
+#gradiant = #parameter \
+#optimizer state = 2 * #parameter (m and v) \
+#activation
+
+    QKV: batch_size * seq_len * d_model
+    attention score: batch_size * seq_len * seq_len
+    atention output: batch_size * seq_len * d_model
+    FFN w1 output: batch_size * seq_len * 4d_model
+    FFN siglu output: batch_size * seq_len * 4d_model
+    final_output: batch_size * seq_len * d_model
+    logits: batch_size * seq_len * vocab_size
+total activation: $B S d_v + (12n+1)BSd_m + nBS^2$
+
+**total memory cost** = \
+**4*total memory cost of parameters** + **total memory cost of activations** \
+~ **30GB**
+
+(b) Instantiate your answer for a GPT-2 XL-shaped model to get an expression that only depends on
+the batch_size. What is the maximum batch size you can use and still fit within 80GB memory?
+
+mem(B)=4.39B + 23.6 (GB)
+$mem(B) \le 80GB \Rightarrow B \le 12$
+
+(c) How many FLOPs does running one step of AdamW take?
+
+| 步骤                        | 操作                                     | FLOPs/param        |
+| ------------------------- | -------------------------------------- | ------------------ |
+| 一阶矩更新（`m_t`）              | 2 mul + 1 add                          | 3                  |
+| 二阶矩更新（`v_t`）              | 2 mul + 1 add + 1 square               | 4                  |
+| 偏差校正（`m_hat`, `v_hat`）    | 2 div                                  | 2                  |
+| 参数更新（`-lr * m / sqrt(v)`） | 1 sqrt + 1 add + 1 div + 1 mul + 1 sub | \~5                |
+| 权重衰减                      | 2 mul + 1 sub                          | 3                  |
+| **合计**                    |                                        | **17** FLOPs/param |
+
+**Total flops = 17 * 2,12 * 1e9 ~= 3.6 * 1e10**
+
+
+(d) Model FLOPs utilization (MFU) is defined as the ratio of observed throughput (tokens per second)
+relative to the hardware’s theoretical peak FLOP throughput [Chowdhery et al., 2022].
+An NVIDIA A100 GPU has a theoretical peak of 19.5 teraFLOP/s for float32 operations. Assuming
+you are able to get 50% MFU, how long would it take to train a GPT-2 XL for 400K steps and a
+batch size of 1024 on a single A100? Following Kaplan et al. [2020] and Hoffmann et al. [2022],
+assume that the backward pass has twice the FLOPs of the forward pass.
+
+**4.6days**
