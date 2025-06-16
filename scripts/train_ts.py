@@ -199,7 +199,7 @@ def train():
     logger.info("模型训练完成。")
     
     # 保存最终模型
-    logger.info(f"正在保存最终模型到: {data_paths["final_model_path"]}")
+    logger.info(f"正在保存最终模型到: {data_paths['final_model_path']}")
     transformer_train.save_checkpoint(
         model=model,
         optimizer=optimizer,
