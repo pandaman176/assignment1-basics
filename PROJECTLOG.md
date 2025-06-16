@@ -380,3 +380,6 @@ batch size of 1024 on a single A100? Following Kaplan et al. [2020] and Hoffmann
 assume that the backward pass has twice the FLOPs of the forward pass.
 
 **4.6days**
+
+# TODO optimize bpe_tokenizer
+# TODO 设置路径

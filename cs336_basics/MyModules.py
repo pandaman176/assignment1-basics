@@ -510,3 +510,26 @@ def clip_grad_norm_(
             p.grad.detach().mul_(clip_coef)
 
     return total_norm
+
+def grad_norm(parameters, norm_type: float = 2.0) -> torch.Tensor:
+    """Compute the norm of gradients for all parameters."""
+    parameters = list(filter(lambda p: p.grad is not None, parameters))
+    
+    if len(parameters) == 0:
+        return torch.tensor(0.)
+
+    # 计算总梯度范数（不同范数类型）
+    if norm_type == float('inf'):
+        total_norm = max(p.grad.detach().abs().max() for p in parameters)
+        # call detach() because we don't want to keep the second order gradient
+    else:
+        # norm(g_i) = sqrt(sum(g_i^2)) = sqrt(sum(g1_i^2)+sum(g2_i^2)) = sqrt(||g1_i||_2^2 + ||g2_i||_2^2)
+        # =norm(norm(gj_i)) calculate two norms since different gradient have different shape
+        total_norm = torch.norm(
+            torch.stack([
+                torch.norm(p.grad.detach(), norm_type)
+                for p in parameters
+            ]),
+            norm_type
+        )
+    return total_norm
