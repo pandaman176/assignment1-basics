@@ -7,7 +7,7 @@ from einops import rearrange
 from loguru import logger
 
 from cs336_basics import MyModules, transformer_train, bpe_tokenizer
-from cs336_basics.useful_path import WORK_DIR, DATA_DIR, DUMP_PATH
+from cs336_basics.useful_path import WORK_DIR, DATA_DIR, MODEL_DIR
 
 def train():
     # 设置所有超参数
@@ -264,10 +264,10 @@ def generate(
 if __name__ == "__main__":
     log_path = WORK_DIR / "logs/train_v0.log"
     logger.add(log_path, rotation="1 day", retention="7 days", level="INFO")
-    TRAIN_DATA_PATH = DUMP_PATH / "tinystories_train_ids.npy"
+    TRAIN_DATA_PATH = MODEL_DIR / "tinystories_train_ids.npy"
     VAL_DATA_PATH = None  # 验证集路径
     CHECKPOINT_LOAD_PATH = None  # 模型检查点路径
-    CHECKPOINT_SAVE_FORMAT = WORK_DIR / "models/checkpoints/checkpoint_v0_{}.pt"  # 检查点保存路径格式
-    FINAL_MODEL_PATH = WORK_DIR / "models/finals/final_model_v0.pt"  # 最终模型保存路径
+    CHECKPOINT_SAVE_FORMAT = MODEL_DIR / "checkpoints/checkpoint_v0_{}.pt"  # 检查点保存路径格式
+    FINAL_MODEL_PATH = MODEL_DIR / "finals/final_model_v0.pt"  # 最终模型保存路径
 
     train()

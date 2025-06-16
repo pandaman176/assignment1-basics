@@ -8,7 +8,7 @@ from pathlib import Path
 logger = logger_config.setup_logger(__name__)
 
 def exp_on_ts():
-    DUMP_PATH = useful_path.DUMP_PATH
+    DUMP_PATH = useful_path.MODEL_DIR
     DATA_PATH = useful_path.DATA_DIR
 
     special_tokens = ["<|endoftext|>"]
