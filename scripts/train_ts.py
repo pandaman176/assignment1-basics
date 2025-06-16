@@ -2,9 +2,11 @@ import torch
 import numpy as np
 import numpy.typing as npt
 import wandb
+import os
 from tqdm import tqdm
 from einops import rearrange
 from loguru import logger
+import argparse
 
 from cs336_basics import MyModules, transformer_train, bpe_tokenizer
 from cs336_basics.useful_path import WORK_DIR, DATA_DIR, MODEL_DIR
@@ -270,4 +272,9 @@ if __name__ == "__main__":
     CHECKPOINT_SAVE_FORMAT = MODEL_DIR / "checkpoints/checkpoint_v0_{}.pt"  # 检查点保存路径格式
     FINAL_MODEL_PATH = MODEL_DIR / "finals/final_model_v0.pt"  # 最终模型保存路径
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--disable-wandb", action="store_true", help="Disable Weights & Biases logging")
+    args = parser.parse_args()
+    if args.disable_wandb:
+        os.environ["WANDB_MODE"] = "disabled"
     train()
