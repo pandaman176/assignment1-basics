@@ -6,6 +6,8 @@ from torch import Tensor
 from einops import einsum, reduce, rearrange, repeat
 from jaxtyping import Float, Bool, Int
 
+################Transformer Architecture###############
+
 class Linear(nn.Module):
 
     def __init__(
@@ -97,8 +99,8 @@ class SwiGLU(nn.Module):
         """
         FFN(x) = SwiGLU(x, W1, W2, W3) = W2(SiLU(W1x) ⊙ W3x)
         """
-        
-        return self.w2(self.w1(x) * self.sigmoid(self.w1(x)) * self.w3(x)) 
+        w1_x = self.w1(x)
+        return self.w2(w1_x * self.sigmoid(w1_x) * self.w3(x)) 
 
 class RoPE(nn.Module):
     def __init__(self, theta: float, d_k: int, max_seq_len: int, device=None, dtype=None) :
@@ -313,6 +315,7 @@ class transformer_lm(nn.Module):
         ])
         self.ln_final = RMSNorm(d_model)
         self.lm_head = Linear(d_model, vocab_size)
+
 
     def forward(
             self,

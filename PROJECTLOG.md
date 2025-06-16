@@ -127,3 +127,144 @@ uint16 is used to save the ids, which is more efficient than uint32 since token_
 
 # 3.6
 Note: Although in the guide paper, transformer_lm end with softmax, but in code it is not since we directly use log-softmax to calculate loss, if we use softmax, we can not pass the test case.
+
+## Resources Acounting
+
+> N(total num of tokens) = B(batch size) = S(sequence length)
+### MHSA
+**#param** = $3d_m \times d_m + d_m \times d_m$ (qkv + out) = $4d_m^2$
+| 项目             | FLOPs                                   |
+| -------------- | --------------------------------------- |
+| qkv projection | $6N d_m^2$                              |
+| RoPE       | $6N d_m$                                |
+| QK^T           | $2B S^2 d_m$                            |
+| softmax        | $4B h S^2$                              |
+| AV             | $2B S^2 d_m$                            |
+| out projection | $2N d_m^2$                              |
+| **总 FLOPs**    | $8N d_m^2 + 4B S^2 d_m + \text{[RoPE]+[Softmax]}$ |
+
+### FFN
+**#param** = $3d_m \times d_{ff}$ (w1 + w2 + w3) 
+
+| 项目             | FLOPs                                   |
+| -------------- | --------------------------------------- |
+| w1 projection | $2N d_{ff} d_m$                              |o
+| w2 projection | $2N d_m d_{ff}$                              |
+| sigmoid(w1_x) | $4N$ 4FLOP/element                          |
+| w1_x * sigmoid * w2_x | $2 N d_{ff}$ 
+| w2 projection | $2N d_{ff} d_m$                              |
+| **总 FLOPs**    | $6N d_{ff} d_m + [2N d_{ff} + 4N]$ |
+
+### RMSNorm
+**#param** = $d_m$
+
+| 步骤                     | FLOPs / token                         |
+| ---------------------- | ----------------------------- |
+| $x^2$               | $d_m$                       |
+| average（addition + division）           | $d_m-1$ add + 1 div ≈ $d_m$ FLOPs |
+| plus $\epsilon$ and sqrt       | 1 add + 1 sqrt ≈ 2 FLOPs    |
+| 除法归一化 $x / \text{rms}$ | $d_m$ div                       |
+| 乘以 $\gamma$            | $d_m$ mul                       |
+
+**总 FLOPs** = $(2d_m+ 2 + 2d_m ) \times N= (4d_m + 2) \times B S$ (can be ignore)
+
+### Transformer Block (MHSA + FFN + 2RMSNorm)
+**#param** = $4d_m^2 + 3d_m \times d_{ff} + 2d_m$
+
+**总 FLOPs** = $(8N d_m^2 + 4B S^2 d_m) + 6N d_{ff} d_m$
+(only count the FLOPs of matrix multiplication)
+
+### Token Embedding （tensor indexing）
+$d_v$ = vocab size
+
+**#param** = $d_m d_v$
+
+no matrix multiplication
+
+### final LayerNorm (RMSNorm)
+**#param** = $d_m$
+
+**FLOPs** = $4N d_m$ (can be ignore)
+
+### output embedding （Linear）
+$d_v$ = vocab size
+
+**#param** = $d_m d_v$
+**FLOPs** = $2N d_m d_v$
+
+
+### TOTAL
+$n$ = num of transformer blocks
+
+**TOTAL PARAM** 
+$$
+\begin{aligned}
+&= d_m d_v + n(4d_m^2 + 3d_m d_{ff} + 2d_m) + d_m + d_m d_v  \\
+&= 4n d_m^2 + 3n d_m d_{ff} + (2n+1)d_m + 2d_m d_v \\
+\end{aligned}
+$$  
+
+**TOTAL FLOPs**
+$$
+\begin{aligned}
+&= n(8N d_m^2 + 4B S^2 d_m + 6N d_{ff} d_m) + 2Nd_m d_v
+\end{aligned}
+$$
+
+(a) Consider GPT-2 XL, which has the following configuration:
+
+**vocab_size : 50,257
+context_length : 1,024
+num_layers : 48
+d_model : 1,600
+num_heads : 25
+d_ff : 6,400**
+
+Suppose we constructed our model using this configuration. How many trainable parameters
+would our model have? Assuming each parameter is represented using single-precision floating
+point, how much memory is required to just load this model?
+
+#param = 2,127,057,600 required memory = 7.924 GB
+
+(b) Identify the matrix multiplies required to complete a forward pass of our GPT-2 XL-shaped
+model. How many FLOPs do these matrix multiplies require in total? Assume that our input
+sequence has context_length tokens.
+
+#FLOPs = 4,513,336,524,800 
+
+(c) Based on your analysis above, which parts of the model require the most FLOPs?
+
+transformer block
+
+(d) Repeat your analysis with GPT-2 small (12 layers, 768 d_model, 12 heads), GPT-2 medium (24
+layers, 1024 d_model, 16 heads), and GPT-2 large (36 layers, 1280 d_model, 20 heads). As the
+model size increases, which parts of the Transformer LM take up proportionally more or less of
+the total FLOPs?
+Deliverable: For each model, provide a breakdown of model components and its associated
+FLOPs (as a proportion of the total FLOPs required for a forward pass). In addition, provide a
+one-to-two sentence description of how varying the model size changes the proportional FLOPs
+of each component.
+
+| 模型           | Attention (%) | FFN (%) | Output Head (%) | 总 FLOPs（TFLOPs） |
+| ------------ | ------------- | ------- | --------------- | --------------- |
+| GPT-2 Small  | 99.37%        | 0.44%   | 0.20%           | 0.04            |
+| GPT-2 Medium | 99.32%        | 0.58%   | 0.10%           | 0.10            |
+| GPT-2 Large  | 99.21%        | 0.72%   | 0.07%           | 0.20            |
+| GPT-2 XL     | 99.05%        | 0.90%   | 0.05%           | 0.33            |
+
+随着模型规模增大（特别是层数和 d_model 增加）：
+注意力机制（Attention）始终占主导地位（>99%），但其比例略微下降。
+前馈网络（FFN）FLOPs 占比上升，从 0.44% 增长到 0.90%，表明其相对开销增大。
+输出层开销占比递减，说明模型越大，输出层的计算占比越小。
+
+(e) Take GPT-2 XL and increase the context length to 16,384. How does the total FLOPs for one
+forward pass change?
+How do the relative contribution of FLOPs of the model components
+change?
+
+当将 GPT-2 XL 的上下文长度从 1,024 增加到 **16,384** 时，**单次前向传播的总 FLOPs 从约 0.33 TFLOPs 激增到 82.47 TFLOPs**，增加了约 **250 倍**。
+
+与此同时，**几乎所有 FLOPs 都集中在注意力机制（占比约 100%）**，而 FFN 和输出层的计算量占比趋近于 0，这表明**长上下文时注意力计算成为瓶颈**。
+
+这是因为注意力计算中的 $4BS^2 d_m$ 项对上下文长度非常敏感，增长为平方级别，大于其他线性项。
+
