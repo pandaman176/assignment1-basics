@@ -383,3 +383,7 @@ assume that the backward pass has twice the FLOPs of the forward pass.
 
 # TODO optimize bpe_tokenizer
 利用反向索引加速merge pair的过程
+
+# DEBUGLOG
+RMS parameter(scale) 因该用torch.ones初始化而不是torch.empty
+否则会导致梯度爆炸

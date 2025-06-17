@@ -149,9 +149,7 @@ def run_multihead_self_attention(
     mhsa = MyModules.MHSA(d_model, num_heads)
     qkv_proj_weight = torch.cat([q_proj_weight, k_proj_weight, v_proj_weight], dim=0)
     mhsa.load_state_dict({"qkv_proj.weight": qkv_proj_weight, "out_proj.weight": o_proj_weight})
-    seq_len = in_features.shape[-2]
-    causal_mask = ~torch.triu(torch.ones(seq_len, seq_len, device=in_features.device, dtype=torch.bool), diagonal=1).bool()
-    return mhsa(in_features, mask=causal_mask)
+    return mhsa(in_features)
     raise NotImplementedError
 
 
@@ -195,9 +193,7 @@ def run_multihead_self_attention_with_rope(
     mhsa = MyModules.MHSA(d_model, num_heads, theta, max_seq_len)
     qkv_proj_weight = torch.cat([q_proj_weight, k_proj_weight, v_proj_weight], dim=0)
     mhsa.load_state_dict({"qkv_proj.weight": qkv_proj_weight, "out_proj.weight": o_proj_weight})
-    seq_len = in_features.shape[-2]
-    causal_mask = ~torch.triu(torch.ones(seq_len, seq_len, device=in_features.device, dtype=torch.bool), diagonal=1).bool()
-    return mhsa(in_features, token_positions=token_positions, mask=causal_mask)
+    return mhsa(in_features, token_positions=token_positions)
     raise NotImplementedError
 
 
@@ -297,10 +293,7 @@ def run_transformer_block(
     """
     tf = MyModules.transformer_block(d_model, num_heads, d_ff, theta, max_seq_len)
     tf.load_weights(weights)
-    token_positions = repeat(torch.arange(in_features.shape[-2], device=in_features.device), 's -> b s', b=in_features.shape[0])
-    seq_len = in_features.shape[-2]
-    causal_mask = ~torch.triu(torch.ones(seq_len, seq_len, device=in_features.device, dtype=torch.bool), diagonal=1).bool()
-    return tf(in_features,mask=causal_mask, token_positions=token_positions)
+    return tf(in_features)
 
     raise NotImplementedError
 
@@ -386,10 +379,7 @@ def run_transformer_lm(
     """
     ts_lm = MyModules.transformer_lm(vocab_size, context_length, num_layers, d_model, num_heads, d_ff, rope_theta)
     ts_lm.load_weights(weights)
-    token_positions = repeat(torch.arange(in_indices.shape[-1], device=in_indices.device), 's -> b s', b=in_indices.shape[0])
-    seq_len = in_indices.shape[-1]
-    causal_mask = ~torch.triu(torch.ones(seq_len, seq_len, device=in_indices.device, dtype=torch.bool), diagonal=1).bool()
-    return ts_lm(in_indices, mask=causal_mask, token_positions=token_positions)
+    return ts_lm(in_indices)
     raise NotImplementedError
 
 

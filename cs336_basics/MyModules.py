@@ -65,7 +65,7 @@ class RMSNorm(nn.Module):
         dtype: torch.dtype | None = None Data type of the parameters
         """
         super().__init__()
-        self.scale = nn.Parameter(torch.empty(d_model, device=device, dtype=dtype))
+        self.scale = nn.Parameter(torch.ones(d_model, device=device, dtype=dtype))
         self.eps = eps
         self.d_model = d_model
 
@@ -77,8 +77,9 @@ class RMSNorm(nn.Module):
         sq_mean = reduce(x**2, "batch sequence d_model -> batch sequence 1", "mean")
         rms = torch.sqrt(sq_mean + self.eps)
         norm_x = x / rms
+        result = norm_x * self.scale
 
-        return norm_x * self.scale
+        return result.to(x.dtype)
 
 class SwiGLU(nn.Module):
     def __init__(
@@ -90,7 +91,11 @@ class SwiGLU(nn.Module):
     ):
         super().__init__()
         self.d_model = d_model
-        self.d_ff = d_ff
+        if d_ff is None:
+            self.d_ff = int(8 / 3 * d_model)
+            self.d_ff = (self.d_ff + 63) // 64 * 64
+        else:
+            self.d_ff = d_ff
         self.w1 = Linear(d_model, self.d_ff, device=device, dtype=dtype)
         self.w2 = Linear(self.d_ff, self.d_model, device=device, dtype=dtype)
         self.w3 = Linear(self.d_model, self.d_ff, device=device, dtype=dtype)
@@ -188,12 +193,12 @@ def scaled_dot_product_attention(
     to 1, and the attention probabilities of positions with a mask value of False should be zero.
     """
 
-    d_k = Q.size(-1)
+    d_k = Q.shape[-1]
     # 第 i 个 query 对第 j 个 key 的相关性（相似度）
     scores = einsum(Q, K, "... n d_k, ... m d_k -> ... n m") / math.sqrt(d_k)
 
     if mask is not None:
-        scores = scores.masked_fill(mask == False, float('-inf'))  # 屏蔽位置设为 -inf
+        scores = scores.masked_fill(mask == 0, float('-inf'))  # 屏蔽位置设为 -inf
     
     attn = softmax(scores, dim=-1) # 某个query对所有key的相关性 进行softmax归一化
 
@@ -217,6 +222,8 @@ class MHSA(nn.Module):
         self.head_dim = d_model // num_heads
         self.theta = theta
         self.max_seq_len = max_seq_len
+        self.device = device
+        self.dtype = dtype
         # Linear projections
         self.qkv_proj = Linear(d_model, 3 * d_model, device=device, dtype=dtype)
         self.out_proj = Linear(d_model, d_model, device=device, dtype=dtype)
@@ -226,7 +233,6 @@ class MHSA(nn.Module):
     def forward(
             self, 
             x: Float[Tensor, " ... sequence_length d_in"],
-            mask: Bool[Tensor, " ... sequence_length sequence_length"] | None = None,
             token_positions: Int[Tensor, " ... sequence_length"] | None = None,
     ) -> Float[Tensor, " ... sequence_length d_out"]:
         
@@ -238,6 +244,10 @@ class MHSA(nn.Module):
         if self.theta is not None and token_positions is not None:
             q = self.rope(q, token_positions)
             k = self.rope(k, token_positions)
+
+        seq_len = x.shape[-2]
+        #mask = ~torch.triu(torch.ones(seq_len, seq_len, device=x.device, dtype=torch.bool), diagonal=1).bool()
+        mask = torch.tril(torch.ones((seq_len, seq_len), dtype=torch.bool)).to(self.device)
 
         # Apply scaled dot-product attention
         attn_output = scaled_dot_product_attention(q, k, v, mask)
@@ -253,7 +263,7 @@ class transformer_block(nn.Module):
         d_model: int, # Dimensionality of the transformer block input.
         num_heads: int, # Number of heads to use in multi-headed attention.
         d_ff: int, # Dimensionality of the position-wise feed-forward inner layer.
-        theta: float | None = None, # RoPE parameter.
+        theta: float | None = 10000.0, # RoPE parameter.
         max_seq_len: int | None = None, # RoPE parameter used to pre-cache.
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
@@ -265,18 +275,17 @@ class transformer_block(nn.Module):
         self.device = device
         self.dtype = dtype
         
-        self.attn = MHSA(d_model, num_heads, theta, max_seq_len)
-        self.ffn = SwiGLU(d_model, d_ff)
-        self.ln1 = RMSNorm(d_model)
-        self.ln2 = RMSNorm(d_model)
+        self.attn = MHSA(d_model, num_heads, theta, max_seq_len, device=device)
+        self.ffn = SwiGLU(d_model, d_ff, device=device)
+        self.ln1 = RMSNorm(d_model, device=device)
+        self.ln2 = RMSNorm(d_model, device=device)
 
     def forward(
         self,
         x: Float[Tensor, " ... sequence_length d_model"],
-        mask: Bool[Tensor, "... sequence_length sequence_length"] | None = None, # mask attention
-        token_positions: Int[Tensor, "... sequence_length"] | None = None,# RoPE
     ) -> Float[Tensor, "... sequence_length d_model"]:
-        x = x + self.attn(self.ln1(x), mask, token_positions) # first sub layer for self attention
+        token_positions = torch.arange(x.shape[-2], dtype=torch.int, device=x.device)  # (batch, ..., seq_len)
+        x = x + self.attn(self.ln1(x), token_positions) # first sub layer for self attention
         x = x + self.ffn(self.ln2(x)) # second sub layer for position-wise feed forward
         return x
 
@@ -321,25 +330,24 @@ class transformer_lm(nn.Module):
         self.device = device
         self.dtype = dtype
         
-        self.token_embeddings = Embedding(vocab_size, d_model)
+        self.token_embeddings = Embedding(vocab_size, d_model, device=device)
         self.layers = nn.ModuleList([
-            transformer_block(d_model, num_heads, d_ff, rope_theta, context_length) 
+            transformer_block(d_model, num_heads, d_ff, rope_theta, context_length, device=device) 
             for _ in range(num_layers)
         ])
-        self.ln_final = RMSNorm(d_model)
-        self.lm_head = Linear(d_model, vocab_size)
+        self.ln_final = RMSNorm(d_model, device=device)
+        self.lm_head = Linear(d_model, vocab_size, device=device)
 
 
     def forward(
             self,
             x: Int[Tensor, " batch_size sequence_length"],
-            mask: Bool[Tensor, " batch_size sequence_length sequence_length"] | None = None,
             token_positions: Int[Tensor, " batch_size sequence_length"] | None = None,
     ) -> Float[Tensor, " batch_size sequence_length vocab_size"]:
 
         x = self.token_embeddings(x) # (batch_size, sequence_length, d_model)
         for layer in self.layers:
-            x = layer(x, mask, token_positions) # (batch_size, sequence_length, d_model)
+            x = layer(x) # (batch_size, sequence_length, d_model)
         x = self.ln_final(x) # (batch_size, sequence_length, d_model)
         x = self.lm_head(x) # (batch_size, sequence_length, vocab_size)
         # 不在这里进行softmax, 因为直接在最后利用log-softmax计算loss

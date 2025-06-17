@@ -38,7 +38,7 @@ def train():
         "batch_size": 16,         # 批次大小
         "total_epochs": 0.5,      # 训练轮数
         "checkpoint_freq": 2000,  # 每隔多少步保存一次检查点
-        "log_freq": 10,           # 每隔多少步记录一次日志
+        "log_freq": 1,           # 每隔多少步记录一次日志
         "val_freq": 400,          # 每隔多少步在验证集上评估
         "val_batch_size": 16,     # 验证时的批次大小
         "val_batches": 20,        # 验证时使用的批次数量
@@ -132,7 +132,7 @@ def train():
             iteration=step,
             max_learning_rate=optim_config["lr"],
             min_learning_rate=optim_config["lr"] * 0.01,
-            warmup_iters=min(500,int(0.1 * total_steps)),
+            warmup_iters=int(0.05 * total_steps),
             anneal_iters=total_steps,
         )
         for param_group in optimizer.param_groups:
@@ -154,15 +154,6 @@ def train():
 
         # 反向传播和优化参数
         loss.backward()
-
-        # 可视化每一层的梯度范数
-        if step % train_config["log_freq"] == 0:
-            grad_stats = {}
-            for name, param in model.named_parameters():
-                if param.grad is not None:
-                    grad_norm = param.grad.data.norm(2).item()
-                    grad_stats[f"grad_l2_norm/{name}"] = grad_norm
-            wandb.log(grad_stats | {"step": step})  # 用 | 合并两个字典
         
         # 计算梯度的 L2 范数
         if step % train_config["log_freq"] == 0:
@@ -224,68 +215,22 @@ def train():
     # 关闭wandb
     wandb.finish()
 
-@torch.no_grad()
-def generate(
-    model: torch.nn.Module,
-    prompt: str,
-    tokenizer,
-    max_new_tokens: int = 100,
-    temperature: float = 1.0,
-    top_p: float = 0.9,
-    end_token_id: int = None,
-    device: torch.device | None = None,
-) -> str:
-    model.eval()
-    if device is None:
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    
-    # encode the prompt
-    input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
-    generated = rearrange(input_ids.clone(), "seq_len -> 1 seq_len")
-    # generated: (batch_size=1, seq_len)
-
-    for _ in range(max_new_tokens):
-        context = generated[:, -model.context_length:]
-        logits = model(context)  # 假设输出 shape 为 (1, seq_len, vocab_size)
-        logits = logits[:, -1, :]  # 取最后一个位置的 logits
-
-        logits = logits / temperature
-        probs = MyModules.softmax(logits, dim=-1)
-
-        # Top-p sampling
-        sorted_probs, sorted_indices = torch.sort(probs, descending=True)
-        cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
-
-        sorted_mask = cumulative_probs > top_p        # True 的位置表示要屏蔽
-        sorted_mask[..., 1:] = sorted_mask[..., :-1]  # 向右移一位：保留第一个超过 top_p 的 token
-        sorted_mask[..., 0] = False                   # 保底，防止第一个 token 被屏蔽
-
-
-        sorted_probs[sorted_mask] = 0.0 # boolean indexing
-        sorted_probs = sorted_probs / sorted_probs.sum(dim=-1, keepdim=True)
-
-        next_token_index = torch.multinomial(sorted_probs, num_samples=1)
-        next_token = sorted_indices.gather(dim=-1, index=next_token_index)
-
-        generated = torch.cat((generated, next_token), dim=-1)
-
-        if end_token_id is not None and next_token.item() == end_token_id:
-            break
-
-    return tokenizer.decode(generated[0].tolist()) # generated[0]: Tensor(seq_len) -to_list-> [seq_len]
 
 if __name__ == "__main__":
-    log_path = WORK_DIR / "logs/train_v0.log"
+    log_path = WORK_DIR / "logs/train_v1.log"
     logger.add(log_path, rotation="1 day", retention="7 days", level="INFO")
     TRAIN_DATA_PATH = DATA_DIR / "tinystories_train_ids.npy"
-    VAL_DATA_PATH = None  # 验证集路径
+    VAL_DATA_PATH = DATA_DIR / "tinystories_valid_ids.npy"  # 验证集路径
     CHECKPOINT_LOAD_PATH = None  # 模型检查点路径
-    CHECKPOINT_SAVE_FORMAT = MODEL_DIR / "checkpoints/checkpoint_v0_{}.pt"  # 检查点保存路径格式
-    FINAL_MODEL_PATH = MODEL_DIR / "finals/final_model_v0.pt"  # 最终模型保存路径
+    CHECKPOINT_SAVE_FORMAT = MODEL_DIR / "checkpoints/checkpoint_v1_{}.pt"  # 检查点保存路径格式
+    FINAL_MODEL_PATH = MODEL_DIR / "finals/final_model_v1.pt"  # 最终模型保存路径
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--disable-wandb", action="store_true", help="Disable Weights & Biases logging")
+    parser.add_argument("--offline-wandb", action="store_true", help="Disable Weights & Biases logging")
     args = parser.parse_args()
     if args.disable_wandb:
         os.environ["WANDB_MODE"] = "disabled"
+    if args.offline_wandb:
+        os.environ["WANDB_MODE"] = "offline"
     train()
