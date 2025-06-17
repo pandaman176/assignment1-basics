@@ -80,6 +80,7 @@ def train():
         rope_theta=model_config["rope_theta"],
         device=device,
     )
+    model = model.to(device)
     logger.info("模型初始化完成。")
 
     # 初始化优化器
@@ -123,7 +124,7 @@ def train():
     # step循环开始
     logger.info("开始训练模型...")
     for step in tqdm(range(start_iter, total_steps + 1), desc="训练进度", unit="step"):
-        model.train()
+        # model.train()
         # 清空梯度
         optimizer.zero_grad()
 
@@ -154,12 +155,13 @@ def train():
 
         # 反向传播和优化参数
         loss.backward()
-        
+
         # 计算梯度的 L2 范数
         if step % train_config["log_freq"] == 0:
             grad_norm = MyModules.grad_norm(model.parameters())
         
         MyModules.clip_grad_norm_(model.parameters(), max_norm=optim_config["max_norm"]) # 梯度裁剪
+
         optimizer.step()
 
         # 日志记录
@@ -175,6 +177,7 @@ def train():
             model.eval()
             with torch.no_grad():
                 num_batches = train_config["val_batches"]
+                val_loss = 0
                 for i in range(num_batches):
                     x_val, y_val = transformer_train.get_batch(
                         validation_dataset,
@@ -222,7 +225,7 @@ if __name__ == "__main__":
     TRAIN_DATA_PATH = DATA_DIR / "tinystories_train_ids.npy"
     VAL_DATA_PATH = DATA_DIR / "tinystories_valid_ids.npy"  # 验证集路径
     CHECKPOINT_LOAD_PATH = None  # 模型检查点路径
-    CHECKPOINT_SAVE_FORMAT = MODEL_DIR / "checkpoints/checkpoint_v1_{}.pt"  # 检查点保存路径格式
+    CHECKPOINT_SAVE_FORMAT = str(MODEL_DIR / "checkpoints/checkpoint_v0_{}.pt")  # 检查点保存路径格式
     FINAL_MODEL_PATH = MODEL_DIR / "finals/final_model_v1.pt"  # 最终模型保存路径
 
     parser = argparse.ArgumentParser()

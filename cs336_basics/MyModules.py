@@ -531,8 +531,8 @@ def clip_grad_norm_(
 
     return total_norm
 
-def grad_norm(parameters, norm_type: float = 2.0) -> torch.Tensor:
-    """Compute the norm of gradients for all parameters."""
+def grad_norm(parameters, norm_type: float = 2.0):
+    """Compute the norm of gradients for all parameters.
     parameters = list(filter(lambda p: p.grad is not None, parameters))
     
     if len(parameters) == 0:
@@ -552,4 +552,12 @@ def grad_norm(parameters, norm_type: float = 2.0) -> torch.Tensor:
             ]),
             norm_type
         )
+    return total_norm
+    """
+    total_norm = 0.0
+    for p in parameters:
+        if p.grad is not None:
+            param_norm = p.grad.detach().data.norm(2)
+            total_norm += param_norm.item() ** 2
+    total_norm = total_norm ** 0.5
     return total_norm
