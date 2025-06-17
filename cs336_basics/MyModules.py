@@ -52,6 +52,7 @@ class Embedding(nn.Module):
         # token_ids形状任意，元素是索引，返回对应embedding
         # 这里不允许用nn.functional.embedding，自己实现索引
         # 直接用tensor索引即可，PyTorch的张量支持整数索引
+        token_ids = token_ids.to(self.weight.device)  # 保证 device 一致
         return self.weight[token_ids]
 
 class RMSNorm(nn.Module):
