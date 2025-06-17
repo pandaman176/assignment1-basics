@@ -124,7 +124,7 @@ def train():
     # step循环开始
     logger.info("开始训练模型...")
     for step in tqdm(range(start_iter, total_steps + 1), desc="训练进度", unit="step"):
-        # model.train()
+        model.train()
         # 清空梯度
         optimizer.zero_grad()
 
