@@ -182,5 +182,5 @@ def generate(
     return outputs
 
 if __name__ == "__main__":
-    FINAL_MODEL_PATH = MODEL_DIR / "finals/final_model_v0.pt"  # 最终模型保存路径
+    FINAL_MODEL_PATH = MODEL_DIR / "checkpoints/checkpoint_v1_2000.pt"
     test()

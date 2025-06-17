@@ -387,3 +387,61 @@ assume that the backward pass has twice the FLOPs of the forward pass.
 # DEBUGLOG
 RMS parameter(scale) 因该用torch.ones初始化而不是torch.empty
 否则会导致梯度爆炸
+
+# Training result on TinyStories
+```bash
+(cs336-basics) wen@~/learn/cs336/assignment1-basics (main)$ uv run scripts/generate.py 
+=====output====== # on checkpoint_v1_16000.pt
+prompt: he quick brown fox jumps over the lazy dog
+output: y sawnd salad. She had to clap h n and she was stiid a happy box.
+Her m The came  T and sall, "What are you doing  Tnd salad?"
+Lily replied, "It's veryarice, little girl.om bird flapped her wings,
+prompt: Once upon a time,
+output:  butndn Sam saw thatnd tree wasarot green. He was fierce and began to snapnd sunrise. It was dimk and dirty. 
+Sam felt sad and hungry. He went to his h Thee and sall, "Don't worry, it's just for
+prompt: Tom and Lily are best friends.
+output:  He was sad.
+One day, one worker saw a smaid, fluffy cat that wasarot for a place to sayaro, butaro. He thought it was his best frie the outslle and wanted to play withnd place to hlle.
+The little bu
+(cs336-basics) wen@~/learn/cs336/assignment1-basics (main)$ uv run scripts/generate.py 
+=====output====== # on checkpoint_v1_32000.pt
+prompt: he quick brown fox jumps over the lazy dog
+output: ore,ndy saw a big fire. "M The, look what I fou the!" Lucy sall. Her m The smiled and sall, "Oh, that's a big firework! Let's prepare fornd big fire truck!"
+But when Lucy sawnd mess, she
+prompt: Once upon a time,
+output:  he wanted to cl nb it. He asked his frie the, Sam, to help h n. Sam was very excited to reachnd big tree.
+Sam tooknd big tree and cl nbed up.omre was a big pile of food and a lot of yummy food.
+prompt: Tom and Lily are best friends.
+output:  Maybe she has a choice to dr Tk warm. She has value to dr Tk.
+One day, she walks tond pimk with her m The. She likesnd po the very much. She seesnd po the andnd sun andnd sky. She goes down and sllles down
+=====output====== # on checkpoint_v1_48000.pt
+prompt: he quick brown fox jumps over the lazy dog
+output: . It was a big, gray caterpiidim!
+Asin n ran out ofnd bag, s Theething unexpected happened.om bag was green and colorful too! It wasarot just a toy thatin n had been hlling, butnd ro The was emp
+prompt: Once upon a time,
+output:  so she setnd bananas down to h n.
+Lucy gavend bananas to her frie the.omy took turns eatingnd bananas.omy raced high and fast. Lucy was very happy and had so much fun. After a while,
+prompt: Tom and Lily are best friends.
+output: 
+"What are you doing,in The?" Mia asked.
+"I am drawing and a big dog and it gets very unc Thefortable. It can breaknd pages,"in The sall.
+Mia dllarot like being grumpy. She dllarot want to g
+=====output====== # on final_v1.pt
+prompt: he quick brown fox jumps over the lazy dog
+output:  cont Tued to sp Tnd wa the and laugh. But when M The la theed onnd tree, she laughed. "Wow, Lily, that was a fun surprise. Let's go play!" M The sall.
+Lily was sad at first, but she knew M The li
+prompt: Once upon a time,
+output:  Jazz had an llea. He sall, "Let's fi the s Thee water and makend music pimty for everyone!"
+Jazz fou the a pretty vase and helped Beida fiid it with water.omn,ndy put a few everything toget
+prompt: Tom and Lily are best friends.
+output: om dog's owner cl nbed up a taid mounta T. Whenndy got tond top,ndy saw a yummy cake!in nmy andnd dog shimednd cake with aidndir frie thes. Everyone lovednd cake, andin nmy ate aidnd cake she m
+=====output====== # on checkpoint_v1_2000.pt
+prompt: he quick brown fox jumps over the lazy dog
+output:  zooms underst park Sparkle Jones filthy quacks rudgles todd Slinky Frankie charming Springbol gardenensiveZero squashes knewquito raked rockets Okay sore chewedellie Patch Daisy dangerous courtatter war wr ashamed Chirp spid dessertsotte whenma mixingedy Meganll mo brick bouncingipesBang fa lights wheiness thougim Adamasketama Ball butter Sophiaaensiveabbyobile Janey Adam strum itchyizes best aloudhesareip. Sue�as tummy dull guitarsurbetterid and A the Snuggles Mimiswaybued her kit was too his too.
+ crI am
+prompt: Once upon a time,
+output:  butin n and thingElla tear Sm app protectionSque her Teal's about.om bird dllarot aboutnd wroug would.om frog sou thes teals onndir have to share.omy laughed, s Theething right ever aboutnd cawiJalk.om ogknd lea
+prompt: Tom and Lily are best friends.
+output: om little feratla was jeep!" sall  Tinais, she sall.
+Adpl shape waved an nals withnd big box.om an crawls Oxygen goodbyeso, butaramedin n was sad. Aidndy cel Fighting vanillain n and Bow. He is she was too strong of acong.omarext was chased
+```
