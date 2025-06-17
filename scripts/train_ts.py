@@ -65,6 +65,7 @@ def train():
     
     # 设备
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    logger.info(f"device: {device}")
     
     # 初始化模型
     logger.info("开始初始化模型...")
