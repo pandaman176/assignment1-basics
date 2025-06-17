@@ -8,7 +8,7 @@ from pathlib import Path
 logger = logger_config.setup_logger(__name__)
 
 def exp_on_ts():
-    DUMP_PATH = useful_path.MODEL_DIR
+    DUMP_PATH = useful_path.DATA_DIR
     DATA_PATH = useful_path.DATA_DIR
 
     special_tokens = ["<|endoftext|>"]
@@ -51,7 +51,7 @@ def exp_on_ts():
         logger.info(f"throughput : {throughput:.2f}bytes/s")
     
 def train_onts():
-    DUMP_PATH = useful_path.DUMP_PATH
+    DUMP_PATH = useful_path.MODEL_DIR
     DATA_PATH = useful_path.DATA_DIR
 
     special_tokens = ["<|endoftext|>"]
@@ -62,13 +62,13 @@ def train_onts():
     )
 
     logger.info("encode TinyStoriesV2-GPT4-train.txt")
-    with open(Path(DATA_PATH) / "TinyStoriesV2-GPT4-train.txt", "r", encoding="utf-8") as f:
+    with open(Path(DATA_PATH) / "TinyStoriesV2-GPT4-valid.txt", "r", encoding="utf-8") as f:
         ids = []
         for _id in ts_tokenizer.encode_iterable(f):
             ids.append(_id)
         arr = np.array(ids, dtype=np.uint16)
-        np.save(DUMP_PATH / "tinystories_train_ids.npy", arr)
-        logger.info(f"save tinystories_train_ids.npy")
+        np.save(DUMP_PATH / "tinystories_valid_ids.npy", arr)
+        logger.info(f"save tinystories_valid_ids.npy")
 
 def test_load_arr():
     DUMP_PATH = useful_path.DUMP_PATH
@@ -77,7 +77,7 @@ def test_load_arr():
     print(arr[:10])
 
 def main():
-    test_load_arr()
+    train_onts()
 
 
 if __name__ == "__main__":

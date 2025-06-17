@@ -266,7 +266,7 @@ def generate(
 if __name__ == "__main__":
     log_path = WORK_DIR / "logs/train_v0.log"
     logger.add(log_path, rotation="1 day", retention="7 days", level="INFO")
-    TRAIN_DATA_PATH = MODEL_DIR / "tinystories_train_ids.npy"
+    TRAIN_DATA_PATH = DATA_DIR / "tinystories_train_ids.npy"
     VAL_DATA_PATH = None  # 验证集路径
     CHECKPOINT_LOAD_PATH = None  # 模型检查点路径
     CHECKPOINT_SAVE_FORMAT = MODEL_DIR / "checkpoints/checkpoint_v0_{}.pt"  # 检查点保存路径格式
