@@ -104,6 +104,17 @@ class SwiGLU(nn.Module):
         w1_x = self.w1(x)
         return self.w2(w1_x * self.sigmoid(w1_x) * self.w3(x)) 
 
+def silu(x: torch.Tensor) -> torch.Tensor:
+    """Compute the silu activation function.
+
+    Args:
+        x (torch.Tensor): Input tensor.
+
+    Returns:
+        torch.Tensor: Output tensor.
+    """
+    return x * torch.sigmoid(x)
+
 class RoPE(nn.Module):
     def __init__(self, theta: float, d_k: int, max_seq_len: int, device=None, dtype=None) :
         """Construct the
