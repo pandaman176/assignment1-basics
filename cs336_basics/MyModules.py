@@ -344,7 +344,7 @@ class transformer_lm(nn.Module):
         x = self.lm_head(x) # (batch_size, sequence_length, vocab_size)
         # 不在这里进行softmax, 因为直接在最后利用log-softmax计算loss
         # x = softmax(x, dim=-1) # (batch_size, sequence_length, vocab_size)
-        return x
+        return x.to(self.device)
     
     def load_weights(self, weights: dict[str, torch.Tensor]):
         """only used for adapter to load the weights not for general use"""

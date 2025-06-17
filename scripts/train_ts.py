@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 import numpy as np
 import numpy.typing as npt
 import wandb
@@ -26,7 +27,7 @@ def train():
     
     # 优化器参数
     optim_config = {
-        "lr": 3e-4,               # 学习率
+        "lr": 3e-3,               # 学习率
         "weight_decay": 1e-2,     # 权重衰减
         "betas": (0.9, 0.999),    # AdamW的beta参数
         "max_norm": 1.0,          # 梯度裁剪的最大范数
@@ -131,7 +132,7 @@ def train():
             iteration=step,
             max_learning_rate=optim_config["lr"],
             min_learning_rate=optim_config["lr"] * 0.01,
-            warmup_iters=int(0.05 * total_steps),
+            warmup_iters=min(500,int(0.1 * total_steps)),
             anneal_iters=total_steps,
         )
         for param_group in optimizer.param_groups:
@@ -153,6 +154,15 @@ def train():
 
         # 反向传播和优化参数
         loss.backward()
+
+        # 可视化每一层的梯度范数
+        if step % train_config["log_freq"] == 0:
+            grad_stats = {}
+            for name, param in model.named_parameters():
+                if param.grad is not None:
+                    grad_norm = param.grad.data.norm(2).item()
+                    grad_stats[f"grad_l2_norm/{name}"] = grad_norm
+            wandb.log(grad_stats | {"step": step})  # 用 | 合并两个字典
         
         # 计算梯度的 L2 范数
         if step % train_config["log_freq"] == 0:

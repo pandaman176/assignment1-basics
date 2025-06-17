@@ -83,9 +83,14 @@ class BPETokenizer:
             for id_ in ids:
                 yield id_
 
-    def decode(self, ids: list[int]) -> str:
+    def decode(self, ids: list[int], end_token_id: int = None) -> str:
         """Decode a sequence of token IDs into text."""
         tokens = [self.vocab[token_id] for token_id in ids]
+        if end_token_id is not None:
+            for i, token in enumerate(tokens):
+                if token == self.vocab[end_token_id]:
+                    tokens = tokens[:i]
+                    break
         decoded_bytes = b"".join(tokens)
         try:
             decoded_str = decoded_bytes.decode("utf-8")

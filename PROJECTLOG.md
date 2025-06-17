@@ -382,4 +382,4 @@ assume that the backward pass has twice the FLOPs of the forward pass.
 **4.6days**
 
 # TODO optimize bpe_tokenizer
-# TODO 设置路径
+利用反向索引加速merge pair的过程
