@@ -67,6 +67,7 @@ def test():
         "he quick brown fox jumps over the lazy dog",
         "Once upon a time,",
         "Tom and Lily are best friends.",
+        "Once upon a time there was a little dog Taffy who was very fond of food. Her trainer Lily would give treats every time they went to the park",
     ]
     tokenizer = bpe_tokenizer.BPETokenizer.from_files(
         vocab_filepath=data_paths["vocab_filepath"],

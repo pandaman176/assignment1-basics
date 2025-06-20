@@ -35,12 +35,12 @@ def train():
     
     # 训练参数
     train_config = {
-        "batch_size": 32,         # 批次大小
+        "batch_size": 64,         # 批次大小
         "total_epochs": 1,      # 训练轮数
         "checkpoint_freq": 2000,  # 每隔多少步保存一次检查点
         "log_freq": 1,           # 每隔多少步记录一次日志
         "val_freq": 400,          # 每隔多少步在验证集上评估
-        "val_batch_size": 64,     # 验证时的批次大小
+        "val_batch_size": 256,     # 验证时的批次大小
         "val_batches": 20,        # 验证时使用的批次数量
     }
     
@@ -221,13 +221,13 @@ def train():
 
 
 if __name__ == "__main__":
-    log_path = WORK_DIR / "logs/train_v1.log"
+    log_path = WORK_DIR / "logs/train_v2.log"
     logger.add(log_path, rotation="1 day", retention="7 days", level="INFO")
     TRAIN_DATA_PATH = DATA_DIR / "tinystories_train_ids.npy"
     VAL_DATA_PATH = DATA_DIR / "tinystories_valid_ids.npy"  # 验证集路径
     CHECKPOINT_LOAD_PATH = None  # 模型检查点路径
-    CHECKPOINT_SAVE_FORMAT = str(MODEL_DIR / "checkpoints/checkpoint_v0_{}.pt")  # 检查点保存路径格式
-    FINAL_MODEL_PATH = MODEL_DIR / "finals/final_model_v1.pt"  # 最终模型保存路径
+    CHECKPOINT_SAVE_FORMAT = str(MODEL_DIR / "checkpoints/checkpoint_v2_{}.pt")  # 检查点保存路径格式
+    FINAL_MODEL_PATH = MODEL_DIR / "finals/final_model_v2.pt"  # 最终模型保存路径
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--disable-wandb", action="store_true", help="Disable Weights & Biases logging")
