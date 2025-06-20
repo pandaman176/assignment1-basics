@@ -27,7 +27,7 @@ def train():
     
     # 优化器参数
     optim_config = {
-        "lr": 3e-3,               # 学习率
+        "lr": 5e-4,               # 学习率
         "weight_decay": 1e-2,     # 权重衰减
         "betas": (0.9, 0.999),    # AdamW的beta参数
         "max_norm": 1.0,          # 梯度裁剪的最大范数
@@ -35,12 +35,12 @@ def train():
     
     # 训练参数
     train_config = {
-        "batch_size": 64,         # 批次大小
-        "total_epochs": 1,      # 训练轮数
+        "batch_size": 32,         # 批次大小
+        "total_tokens": 327_680_000,  # 训练总token数
         "checkpoint_freq": 2000,  # 每隔多少步保存一次检查点
         "log_freq": 1,           # 每隔多少步记录一次日志
         "val_freq": 400,          # 每隔多少步在验证集上评估
-        "val_batch_size": 256,     # 验证时的批次大小
+        "val_batch_size": 16,     # 验证时的批次大小
         "val_batches": 20,        # 验证时使用的批次数量
     }
     
@@ -116,9 +116,9 @@ def train():
     logger.info("数据集加载完成")
 
     # 计算训练所需step
-    total_tokens = training_dataset.shape[0]
-    total_steps = int(train_config["total_epochs"] * total_tokens) // (train_config["batch_size"] * model_config["context_length"])
-    logger.info(f"总token数: {total_tokens}, 训练轮数: {train_config['total_epochs']}, batch大小: {train_config['batch_size']}, 上下文长度: {model_config['context_length']}")
+    total_tokens = train_config["total_tokens"]
+    total_steps = total_tokens // (train_config["batch_size"] * model_config["context_length"])
+    logger.info(f"总token数: {total_tokens}, batch大小: {train_config['batch_size']}, 上下文长度: {model_config['context_length']}")
     logger.info(f"总训练步数: {total_steps}")
 
     # step循环开始
