@@ -4,6 +4,7 @@ from tqdm import tqdm
 import numpy as np
 from typing import Iterable, Iterator, Self
 from .json_saver import load_vocab, load_merges
+from functools import lru_cache
 
 
 class BPETokenizer:
@@ -14,6 +15,7 @@ class BPETokenizer:
         self.vocab = vocab  # {(0, b'\x00'), (1, b'\x01'), (2, b'\x02')}
         self.merges = merges  # [(b' ', b't'), (b'h', b'e'), (b' ', b'a'), (b' ', b's')]
         self.special_tokens = special_tokens
+        self.byte2int = {v: k for k, v in self.vocab.items()}
 
     @classmethod
     def from_files(
@@ -33,6 +35,25 @@ class BPETokenizer:
         merges = load_merges(merges_filepath)
         return cls(vocab, merges, special_tokens)
 
+    @lru_cache(maxsize=1_000_000)
+    def merge_word(self, pre_token) -> list[int]:
+        result = []
+        b_pre_token: bytes = pre_token.encode("utf-8")
+        # print(f"    {b_pre_token=}")
+        bytes_list: list[bytes] = [bytes([byte]) for byte in b_pre_token]
+        # print(f"    {bytes_list=}")
+        for merge in self.merges:
+            # print(f"    find {merge=}")
+            i = 0
+            while i + 1 < len(bytes_list):
+                if (bytes_list[i], bytes_list[i + 1]) == merge:
+                    # print(f"\n        merge {(bytes_list[i], bytes_list[i+1])}")
+                    bytes_list[i : i + 2] = [bytes_list[i] + bytes_list[i + 1]]
+                i += 1
+        for token in bytes_list:
+            result.append(self.byte2int[token])
+        return result
+
     def encode(self, text: str) -> list[int]:
         """Encode an input text into a sequence of token IDs."""
         if not text:
@@ -49,7 +70,6 @@ class BPETokenizer:
             split_texts: list[str] = re.splititer(pattern, text)
         result = []
         for split_text in split_texts:
-            # print(f"{split_text=}")
             if self.special_tokens and split_text in self.special_tokens:
                 b_special_token: bytes = split_text.encode("utf-8")
                 result.append(byte2int[b_special_token])
@@ -58,20 +78,8 @@ class BPETokenizer:
             pre_token_matchs = re.finditer(PAT, split_text)
             for match in pre_token_matchs:
                 pre_token = match.group()
-                b_pre_token: bytes = pre_token.encode("utf-8")
-                # print(f"    {b_pre_token=}")
-                bytes_list: list[bytes] = [bytes([byte]) for byte in b_pre_token]
-                # print(f"    {bytes_list=}")
-                for merge in self.merges:
-                    # print(f"    find {merge=}")
-                    i = 0
-                    while i + 1 < len(bytes_list):
-                        if (bytes_list[i], bytes_list[i + 1]) == merge:
-                            # print(f"\n        merge {(bytes_list[i], bytes_list[i+1])}")
-                            bytes_list[i : i + 2] = [bytes_list[i] + bytes_list[i + 1]]
-                        i += 1
-                for token in bytes_list:
-                    result.append(byte2int[token])
+                sub_result = self.merge_word(pre_token)
+                result.extend(sub_result)
         # print(result)
         return result
 

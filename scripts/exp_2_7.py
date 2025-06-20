@@ -60,8 +60,8 @@ def train_onts():
         merges_filepath=DATA_PATH / "tinystories_merges.json",
         special_tokens=special_tokens,
     )
-    input_path = DATA_PATH / "TinyStoriesV2-GPT4-valid.txt"
-    output_path = DATA_PATH
+    input_path = DATA_PATH / "TinyStoriesV2-GPT4-train.txt"
+    output_path = DATA_PATH / "tinystories_v2_train_ids.npy"
     ts_tokenizer.encode_to_npfile(input_path, output_path)
 
 

@@ -38,5 +38,5 @@ def test():
 if __name__ == "__main__":
     FINAL_MODEL_PATH = MODEL_DIR / "finals/final_model_v1.pt"
     TRAIN_DATA_PATH = DATA_DIR / "tinystories_train_ids.npy"
-    VAL_DATA_PATH = DATA_DIR / "tinystories_valid_ids.npy"  # 验证集路径
+    VAL_DATA_PATH = DATA_DIR / "tinystories_v2_sample_ids.npy"  # 验证集路径
     test()
