@@ -23,7 +23,7 @@ class Linear(nn.Module):
         factory_kwargs = {"device": device, "dtype": dtype}
         self.weight = nn.Parameter(torch.empty(out_features, in_features, **factory_kwargs))
         # 计算标准差 std = sqrt(2 / (in + out))
-        std = (2 / (in_features + out_features)) ** 0.5
+        std = math.sqrt(2.0 / (in_features + out_features))
         # 使用 trunc_normal_ 初始化权重
         nn.init.trunc_normal_(self.weight, mean=0.0, std=std, a=-3 * std, b=3 * std)
 
@@ -487,8 +487,8 @@ def cosine_decay_schedule(
     anneal_iters: int,
 ) -> float:
     if iteration < warmup_iters:
-        return iteration / warmup_iters * max_learning_rate
-    elif iteration <= anneal_iters:
+        return max_learning_rate * iteration / warmup_iters
+    elif iteration < anneal_iters:
         return min_learning_rate + 0.5*(1+math.cos(math.pi * (iteration-warmup_iters)/(anneal_iters - warmup_iters)))*(max_learning_rate - min_learning_rate)  
     else:
         return min_learning_rate
@@ -525,7 +525,7 @@ def clip_grad_norm_(
 
     # 缩放因子（只在超出 max_norm 时才缩放）
     clip_coef = max_norm / (total_norm + eps)
-    if total_norm > max_norm:
+    if clip_coef < 1.0:
         for p in parameters:
             p.grad.detach().mul_(clip_coef)
 

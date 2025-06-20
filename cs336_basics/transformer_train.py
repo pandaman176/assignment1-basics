@@ -11,7 +11,7 @@ def get_batch(
     device: torch.device  
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     # 选择起始索引，确保不会越界
-    max_start = len(x) - context_length 
+    max_start = x.shape[0] - context_length 
     start_indices = np.random.randint(0, max_start, size=batch_size)
 
     # 构造 input 和 target 序列

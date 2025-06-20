@@ -35,12 +35,12 @@ def train():
     
     # 训练参数
     train_config = {
-        "batch_size": 16,         # 批次大小
-        "total_epochs": 0.5,      # 训练轮数
+        "batch_size": 32,         # 批次大小
+        "total_epochs": 1,      # 训练轮数
         "checkpoint_freq": 2000,  # 每隔多少步保存一次检查点
         "log_freq": 1,           # 每隔多少步记录一次日志
         "val_freq": 400,          # 每隔多少步在验证集上评估
-        "val_batch_size": 16,     # 验证时的批次大小
+        "val_batch_size": 64,     # 验证时的批次大小
         "val_batches": 20,        # 验证时使用的批次数量
     }
     
@@ -189,6 +189,7 @@ def train():
                     val_loss += MyModules.cross_entropy_loss(val_logits, y_val)
                 val_loss /= num_batches # 求平均j
                 print(f"[Step {step}] Validation loss: {val_loss.item():.4f}")
+            model.train()
             logger.info(f"验证集损失: {val_loss}")
             wandb.log({"val_loss": val_loss, "step": step})
         

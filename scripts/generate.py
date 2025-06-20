@@ -73,13 +73,15 @@ def test():
         merges_filepath=data_paths["merges_filepath"],
         special_tokens=data_paths["special_tokens"],
     )
+    temperature = 1.0
+    top_p = 0.9
     outputs = generate(
         model=model,
         prompts=prompts,
         tokenizer=tokenizer,
         max_new_tokens=128,
-        temperature=1.2,
-        top_p=0.9,
+        temperature=temperature,
+        top_p=top_p,
         context_length=model_config["context_length"],
         end_token="<|endoftext|>",
         device=device,
@@ -119,6 +121,7 @@ def generate(
     end_token: str = None,
     device: torch.device | None = None,
 ) -> list[str]:
+    print(f"{temperature=}, {top_p=}")
     model.eval()
     if device is None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -175,12 +178,12 @@ def generate(
 
     outputs = []
     for i in range(padded_inputs.shape[0]):
-        output_ids = padded_inputs[i, len_input_ids[i]:].cpu().numpy()
+        output_ids = padded_inputs[i, :].cpu().numpy()
         output_text = tokenizer.decode(output_ids, end_token_id=end_token_id)
         outputs.append(output_text)
 
     return outputs
 
 if __name__ == "__main__":
-    FINAL_MODEL_PATH = MODEL_DIR / "checkpoints/checkpoint_v1_2000.pt"
+    FINAL_MODEL_PATH = MODEL_DIR / "finals/final_model_v1.pt"
     test()
