@@ -1,5 +1,7 @@
 import os
 import regex as re
+from tqdm import tqdm
+import numpy as np
 from typing import Iterable, Iterator, Self
 from .json_saver import load_vocab, load_merges
 
@@ -98,3 +100,35 @@ class BPETokenizer:
             # fallback: replace invalid bytes
             decoded_str = decoded_bytes.decode("utf-8", errors="replace")
         return decoded_str
+
+    def encode_to_npfile(self, input_path: os.PathLike, output_path: os.PathLike) -> None:
+            """
+            将输入文件中的文本编码为BPE token ID列表，并保存为numpy数组文件.npy
+            """
+            import tempfile
+
+            # # 计算文件总行数用于进度条
+            # total_lines = 0
+            # with open(input_path, 'r', encoding='utf-8') as f:
+            #     for _ in f:
+            #         total_lines += 1
+            
+            with tempfile.NamedTemporaryFile(delete=False) as tmpfile:
+                token_count = 0
+
+                with open(input_path, 'r', encoding='utf-8') as f:
+                    # 使用tqdm创建进度条
+                    for token_id in tqdm(self.encode_iterable(f), desc="编码进度", unit="token", total=None):
+                        tmpfile.write(np.int32(token_id).tobytes())
+                        token_count += 1
+
+                tmpfile_path = tmpfile.name
+
+            # 读取临时文件创建memmap，并保存为.npy
+            print("正在保存到文件...")
+            mm_array = np.memmap(tmpfile_path, dtype=np.int32, mode='r', shape=(token_count,))
+            np.save(output_path, mm_array)
+            del mm_array
+            os.remove(tmpfile_path)
+
+            print(f"文件已保存至：{output_path}\n总token数：{token_count}")

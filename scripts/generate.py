@@ -1,10 +1,9 @@
 
 import torch
-from einops import rearrange, repeat
-from loguru import logger
+from einops import repeat
 
 from cs336_basics import MyModules, transformer_train, bpe_tokenizer
-from cs336_basics.useful_path import WORK_DIR, DATA_DIR, MODEL_DIR
+from cs336_basics.useful_path import DATA_DIR, MODEL_DIR
 
 def test():
     # 模型参数
@@ -16,25 +15,6 @@ def test():
         "d_model": 512,           # 嵌入空间维度
         "d_ff": 1344,             # 前馈网络维度
         "rope_theta": 10000,      # RoPE参数
-    }
-    
-    # 优化器参数
-    optim_config = {
-        "lr": 3e-4,               # 学习率
-        "weight_decay": 1e-2,     # 权重衰减
-        "betas": (0.9, 0.999),    # AdamW的beta参数
-        "max_norm": 1.0,          # 梯度裁剪的最大范数
-    }
-    
-    # 训练参数
-    train_config = {
-        "batch_size": 16,         # 批次大小
-        "total_epochs": 0.5,      # 训练轮数
-        "checkpoint_freq": 2000,  # 每隔多少步保存一次检查点
-        "log_freq": 10,           # 每隔多少步记录一次日志
-        "val_freq": 400,          # 每隔多少步在验证集上评估
-        "val_batch_size": 16,     # 验证时的批次大小
-        "val_batches": 20,        # 验证时使用的批次数量
     }
     
     # 设备
@@ -98,17 +78,21 @@ def top_p_sample(probs, top_p):
     cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
 
     sorted_mask = cumulative_probs <= top_p        # True 的位置表示要屏蔽
+    sorted_mask[..., 1:] = sorted_mask[..., :-1].clone()
     sorted_mask[..., 0] = True                   # 保底，防止第一个 token 被屏蔽
 
 
-    sorted_probs_fixed = sorted_probs * sorted_mask
+    sorted_probs_fixed = sorted_probs * sorted_mask.float()
     sorted_probs_normalized = sorted_probs_fixed / sorted_probs_fixed.sum(dim=-1, keepdim=True)
+    sampled_index = torch.multinomial(sorted_probs_normalized, num_samples=1)
+    final_index = sorted_indices.gather(1, sampled_index)
+    return final_index
 
-    probs_filtered = torch.zeros_like(probs)
-    # 使用scatter操作还原原始顺序
-    probs_filtered.scatter_(1, sorted_indices, sorted_probs_normalized)
+    #probs_filtered = torch.zeros_like(probs)
+    ## 使用scatter操作还原原始顺序
+    #probs_filtered.scatter_(1, sorted_indices, sorted_probs_normalized)
 
-    return probs_filtered
+    #return probs_filtered
 
 @torch.no_grad()
 def generate(
@@ -116,7 +100,7 @@ def generate(
     prompts: list[str],
     tokenizer,
     max_new_tokens: int = 100,
-    temperature: float = 1.0,
+    temperature: float = 1.2,
     top_p: float = 0.9,
     context_length: int = 256,
     end_token: str = None,
@@ -165,9 +149,10 @@ def generate(
         logits = logits / temperature
         probs = MyModules.softmax(logits, dim=-1)
 
-        probs = top_p_sample(probs, top_p=top_p)
+        #probs = top_p_sample(probs, top_p=top_p)
 
-        next_token_ids = torch.multinomial(probs, num_samples=1).to(dtype=torch.int32)
+        #next_token_ids = torch.multinomial(probs, num_samples=1).to(dtype=torch.int32)
+        next_token_ids = top_p_sample(probs, top_p=top_p).to(dtype=torch.int32)
         next_token_index = (len_input_ids + num).unsqueeze(1)
         padded_inputs.scatter_(1, next_token_index, next_token_ids)
         # 原地修改
@@ -179,12 +164,13 @@ def generate(
 
     outputs = []
     for i in range(padded_inputs.shape[0]):
-        output_ids = padded_inputs[i, :].cpu().numpy()
+        output_ids = padded_inputs[i, len_input_ids[i]:].cpu().numpy()
         output_text = tokenizer.decode(output_ids, end_token_id=end_token_id)
         outputs.append(output_text)
 
     return outputs
 
 if __name__ == "__main__":
-    FINAL_MODEL_PATH = MODEL_DIR / "finals/final_model_v1.pt"
+    #FINAL_MODEL_PATH = MODEL_DIR / "finals/final_model_v1.pt"
+    FINAL_MODEL_PATH = MODEL_DIR / "checkpoints/checkpoint_v2_2000.pt"
     test()

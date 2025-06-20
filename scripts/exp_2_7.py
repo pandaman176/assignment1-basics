@@ -13,8 +13,8 @@ def exp_on_ts():
 
     special_tokens = ["<|endoftext|>"]
     ts_tokenizer = bpe_tokenizer.BPETokenizer.from_files(
-        vocab_filepath=DUMP_PATH / "tinystories_valid_vocab.json",
-        merges_filepath=DUMP_PATH / "tinystories_valid_merges.json",
+        vocab_filepath=DUMP_PATH / "tinystories_vocab.json",
+        merges_filepath=DUMP_PATH / "tinystorieG_merges.json",
         special_tokens=special_tokens,
     )
     with open(DATA_PATH / "TinyStoriesV2-GPT4-sample.txt", "r", encoding="utf-8") as f:
@@ -56,24 +56,19 @@ def train_onts():
 
     special_tokens = ["<|endoftext|>"]
     ts_tokenizer = bpe_tokenizer.BPETokenizer.from_files(
-        vocab_filepath=DUMP_PATH / "tinystories_valid_vocab.json",
-        merges_filepath=DUMP_PATH / "tinystories_valid_merges.json",
+        vocab_filepath=DATA_PATH / "tinystories_vocab.json",
+        merges_filepath=DATA_PATH / "tinystories_merges.json",
         special_tokens=special_tokens,
     )
+    input_path = DATA_PATH / "TinyStoriesV2-GPT4-valid.txt"
+    output_path = DATA_PATH
+    ts_tokenizer.encode_to_npfile(input_path, output_path)
 
-    logger.info("encode TinyStoriesV2-GPT4-train.txt")
-    with open(Path(DATA_PATH) / "TinyStoriesV2-GPT4-valid.txt", "r", encoding="utf-8") as f:
-        ids = []
-        for _id in ts_tokenizer.encode_iterable(f):
-            ids.append(_id)
-        arr = np.array(ids, dtype=np.uint16)
-        np.save(DUMP_PATH / "tinystories_valid_ids.npy", arr)
-        logger.info(f"save tinystories_valid_ids.npy")
 
 def test_load_arr():
-    DUMP_PATH = useful_path.DUMP_PATH
-    logger.info("load tinystories_train_ids.npy")
-    arr = np.load(DUMP_PATH / "tinystories_train_ids.npy")
+    DUMP_PATH = useful_path.DATA_DIR
+    logger.info("load tinystories_valid_ids.npy")
+    arr = np.load(DUMP_PATH / "tinystories_valid_v2_ids.npy")
     print(arr[:10])
 
 def main():
