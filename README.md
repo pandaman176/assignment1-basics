@@ -1,7 +1,7 @@
 # Summary
 This repository contains the implementation of the assignment that can passed all the tests. Some optimizations points still exist. But due to time and resource limitation, I can not finish the optimizations, also i skip the ablation experiments and training on Open Web Text for same consideration.
 
-## Repo-Treo
+## Repo-Tree
 
 ```
 .
