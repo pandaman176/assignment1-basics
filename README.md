@@ -1,7 +1,8 @@
 # Summary
 This repository contains the implementation of the assignment that can passed all the tests. Some optimizations points still exist. But due to time and resource limitation, I can not finish the optimizations, also i skip the ablation experiments and training on Open Web Text for same consideration.
 
-## Repo-Tree
+## Repo-Treo
+
 ```
 .
 ├── PROJECTLOG.md # details during the project
@@ -20,6 +21,7 @@ This repository contains the implementation of the assignment that can passed al
 
 ├── tinystories_v1_result.png # result of first training
 ├── tinystories_v3_result.png # result of third training
+```
 
 ## Sample Output
 
