@@ -27,7 +27,7 @@ def train():
     
     # 优化器参数
     optim_config = {
-        "lr": 5e-4,               # 学习率
+        "lr": 3e-4,               # 学习率
         "weight_decay": 1e-2,     # 权重衰减
         "betas": (0.9, 0.999),    # AdamW的beta参数
         "max_norm": 1.0,          # 梯度裁剪的最大范数

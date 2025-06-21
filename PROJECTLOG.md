@@ -118,6 +118,8 @@ tests/test_tokenizer.py::test_encode_memory_usage XFAIL (Tokenizer.encode is exp
 [2025-06-10 15:34:05] [INFO] __main__: tiny story tokenizer compress ratio on owt: 1.34
 [2025-06-10 15:34:05] [INFO] __main__: throughput : 205437.20bytes/s
 ```
+## TODO optimize bpe_tokenizer
+利用反向索引加速merge pair的过程 可以进一步加速训练
 compress ration goes down when encode open web text shows thathe tokenizer trained
 on tiny stories is less efficiency in encoding OWT
 
@@ -381,14 +383,15 @@ assume that the backward pass has twice the FLOPs of the forward pass.
 
 **4.6days**
 
-# TODO optimize bpe_tokenizer
-利用反向索引加速merge pair的过程
 
-# DEBUGLOG
-RMS parameter(scale) 因该用torch.ones初始化而不是torch.empty
+# Training on tiny stories
+## v0
+problem: gradient explosion
+reason: RMS parameter(scale) 因该用torch.ones初始化而不是torch.empty
 否则会导致梯度爆炸
+->需要合理进行系数初始j
 
-# Training result on TinyStories
+## v1 and v2
 ```bash
 (cs336-basics) wen@~/learn/cs336/assignment1-basics (main)$ uv run scripts/generate.py 
 =====output====== # on checkpoint_v1_16000.pt
@@ -445,5 +448,47 @@ prompt: Tom and Lily are best friends.
 output: om little feratla was jeep!" sall  Tinais, she sall.
 Adpl shape waved an nals withnd big box.om an crawls Oxygen goodbyeso, butaramedin n was sad. Aidndy cel Fighting vanillain n and Bow. He is she was too strong of acong.omarext was chased
 ```
+problem: val_loss and train_loss are very low but generation quality is shit
+reason: 数据出现了问题, encode 大型文件时没有mmap，存储过大的nparray导致内容出现了异常
 
-数据出现了问题
+**v3**
+```bash 
+/home/wen/learn/cs336/assignment1-basics/data/models/checkpoints/checkpoint_v3_12000.pt
+temperature=1.2, top_p=0.9
+=====output======
+prompt: he quick brown fox jumps over the lazy dog
+output:  while trying to fetch up for herself. He smiled and grabbed one of his bricks while Sam was holding on tight.
+The little girl grabbed a berry from Joe, and she handed the berry to her mum. But there was nothing left ahead. She felt scared, so she quickly called for a relieved little girl. The mean fox reminded her: Now it is too late to understand things - never to separate the scent the next time she ever got here.
+
+prompt: Once upon a time,
+output:  in a messy room, there was a girl named Anna. She had a big bottle of shampoo. She loved to drink juice from it every day. One day, a dog named Spot came running to play with Anna. Spot was very envious of Anna's wine. They both wanted their bottle.
+Anna decided to tell their truth. She felt happy and fast. She said, "Sue, I have a toy for you. We can have some and share our juice." Sue nodded and smiled. She liked balloons too. Spot gave her the bottle of wine. It was not so happy.
+Anna gave Spot all her cocoa. Spot
+prompt: Tom and Lily are best friends.
+output:  They do not hate each other.
+
+prompt: Once upon a time there was a little dog Taffy who was very fond of food. Her trainer Lily would give treats every time they went to the park
+output:  to try new things. They would pause wondering what they needed.
+One day, T's friend over the shop, came over to trade. At first, Tealing with a screw. He wanted a toy though so he asked his third friend to trade if he could trade. Lily thought for a moment and then smiled.
+E him gave Toni a pair of big, red apples for Santa's senses! Toni were so happy to share what he saw. He showed everyone how to get all of the things he found in the store. From then on, Toni helped Toy mummy and two brothers and Dog.
+/home/wen/learn/cs336/assignment1-basics/data/models/finals/final_model_v3.pt
+temperature=1.2, top_p=0.9
+=====output======
+prompt: he quick brown fox jumps over the lazy dog
+output: . The fox thought that this was how they both had each other to serve good pets.
+Lily and the brown fox worked together to serve the tired little bunny. They helped the small rabbit grow bigger, so it could play again. Soon, the slow little animal was no longer playful. It loved all the treats and kept them from a stranger to learn from them. They all became best friends and had many more fun adventures together.
+
+prompt: Once upon a time,
+output:  there was a dog named Bob. Bob had a home on a walk. He liked to walk on the path, even if he was a dog. One day, Bob met a cat named Tom. Tom said, "Hi, Bob! What's your name?"
+Bob said, "I am Bob. I live in a clean house on the path." Tom wanted to discuss more things, but Bob wanted to go on a trip. Tom was sad because he didn't have a clean home. Bob had an idea to help Tom.
+Bob thought hard about how to help Tom. He said, "Let's try singing to help
+prompt: Tom and Lily are best friends.
+output:  They like to hug and slide and spin in the park. But today, Tom and Lily are not good dancers. They make loud noises and cry. Their moms hear them and look at them.
+Tom and Lily are sad. They miss their moms and dads. They wish they did not look at all the time. They want them to come back. But they can't. The fun. They start to cry and whine. They give up and spin in circles. They are not loyal. They are their loyal friends. They are sad.
+
+prompt: Once upon a time there was a little dog Taffy who was very fond of food. Her trainer Lily would give treats every time they went to the park
+output: . One day, while they were at the park, Taffy found a cone. He wanted to offer it to her, so he said "Yes, we can take it home. Can we show it to Lily?"
+Tongy said "Let's go back!" They ran to the park, waving the cone as they arrived. When they got to the park, they could not believe their eyes. "We have so much food!" said Tim.
+All the friends began to eat the melting cone. Lily picked up a red apple and starting pulp. She laughed and said, "Yummy! Yummy!" 
+They played
+```

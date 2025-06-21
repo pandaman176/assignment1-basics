@@ -54,8 +54,9 @@ def test():
         merges_filepath=data_paths["merges_filepath"],
         special_tokens=data_paths["special_tokens"],
     )
-    temperature = 1.0
+    temperature = 1.2
     top_p = 0.9
+    print(data_paths["final_model_path"])
     outputs = generate(
         model=model,
         prompts=prompts,
@@ -171,6 +172,6 @@ def generate(
     return outputs
 
 if __name__ == "__main__":
-    #FINAL_MODEL_PATH = MODEL_DIR / "finals/final_model_v1.pt"
-    FINAL_MODEL_PATH = MODEL_DIR / "checkpoints/checkpoint_v2_2000.pt"
+    FINAL_MODEL_PATH = MODEL_DIR / "finals/final_model_v3.pt"
+    #FINAL_MODEL_PATH = MODEL_DIR / "checkpoints/checkpoint_v3_12000.pt"
     test()

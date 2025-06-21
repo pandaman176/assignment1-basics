@@ -68,7 +68,7 @@ def train_onts():
 def test_load_arr():
     DUMP_PATH = useful_path.DATA_DIR
     logger.info("load tinystories_valid_ids.npy")
-    arr = np.load(DUMP_PATH / "tinystories_valid_v2_ids.npy")
+    arr = np.load(DUMP_PATH / "tinystories_train_v2_ids.npy")
     print(arr[:10])
 
 def main():
